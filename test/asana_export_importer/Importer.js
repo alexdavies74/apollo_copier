@@ -11,7 +11,7 @@ describe("Importer", function() {
         importer.setExport(exp);
 
         client = aei.AsanaClientMock.clone();
-        app.setClient(client);
+        app.addClient(-1, client);
 
         sinon.spy(client.teams, "create");
         sinon.spy(client.teams, "addUser");
@@ -146,7 +146,7 @@ describe("Importer", function() {
     describe("#_importStories", function() {
         it("should add a story to the correct task", function() {
             exp.setMockData({
-                tasks: [{ sourceId: 100, name: "task foo", sourceFollowerIds: [], stories: ["story 1", "story 2"] }]
+                tasks: [{ sourceId: 100, name: "task foo", sourceFollowerIds: [], stories: [{ creator: 123, text: "story 1" }, { creator: 123, text: "story 2" }] }]
             });
 
             importer._importTasks();

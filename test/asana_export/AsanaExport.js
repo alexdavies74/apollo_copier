@@ -174,7 +174,7 @@ describe("AsanaExport", function() {
             exp.taskDataSource()(2, 1).length.should.equal(0);
         });
 
-        it("should return task with two stories with reformatted texts", function() {
+        it("should return task with only comments", function() {
             exp.addObject(1, "User", { name: "mike" });
             exp.addObject(3, "DomainUser", { user: 1, email: "mike@example.com"  });
             exp.addObject(4, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "description", attachments: [2], items: [], stories: [5, 7, 6], followers_du: [], __creation_time: "2014-11-16 22:44:11" });
@@ -184,20 +184,16 @@ describe("AsanaExport", function() {
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50)[0].stories().should.deep.equal([
-                "created task.\nSun Nov 16 2014",
-                "mike\nMY COMMENT\nMon Nov 17 2014",
-                "mike removed the description\nMon Nov 17 2014",
-                "mike changed the name to \"task1\"\nMon Nov 17 2014"
+                { text: "MY COMMENT", creator: 3 }
             ]);
         });
 
-        it("should not include AddAttachmentStory", function() {
+        it("should not include AddAttachmentStory or creation story", function() {
             exp.addObject(1, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [2], followers_du: [], __creation_time: "2014-11-16 22:44:11" });
             exp.addObject(2, "AddAttachmentStory", { creator_du: null, __creation_time: "2014-11-17 22:44:22", text: "removed the description" });
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50)[0].stories().should.deep.equal([
-                "created task.\nSun Nov 16 2014"
             ]);
         });
     });

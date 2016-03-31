@@ -19,7 +19,7 @@ describe("Importer", function() {
         importer.setExport(exp);
 
         client = { workspaces: {}, users: {}, teams: {}, projects: {}, tags: {}, tasks: {}, stories: {} };
-        app.setClient(client);
+        app.addClient(-1, client);
     });
 
     afterEach(function() {
@@ -51,7 +51,7 @@ describe("Importer", function() {
             expect(exp.attachmentDataSource()(0,1000).length).to.equal(1);
 
             expect(client.projects.create).to.have.callCount(5);
-            expect(client.stories.createOnTask).to.have.callCount(80);
+            expect(client.stories.createOnTask).to.have.callCount(49);
             expect(client.tags.createInWorkspace).to.have.callCount(3);
             expect(client.tasks.addProject).to.have.callCount(20);
             expect(client.tasks.addTag).to.have.callCount(5);

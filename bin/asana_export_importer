@@ -9,21 +9,17 @@ binName = path.basename(process.argv[1]);
 
 exports.doc =
 "Usage:\n"+
-"  " + binName + " --api-key=<key> --organization=<id> [options] <path>\n" +
+"  " + binName + " --pat=<pat>... --organization=<id> [options] <path>\n" +
 "  " + binName + " --help\n" +
 "  " + binName + " --version\n" +
 "\n" + 
 "Options:\n" + 
 "  --importer=<type>     Export source type [default: asana_export].\n" + 
 "  --organization=<id>   Asana organization ID.\n" +
-"  --api-key=<key>       Asana API key.\n" +
+"  --pat=<pat>...       Asana Personal Access Tokens\n" +
 "  --api-endpoint=<url>  Asana API endpoint [default: " + aei.asana.Dispatcher.ROOT_URL + "]\n" +
 "  --attachments=<file>  Attachments file to write to, relative to the databases directory [default: attachments.json]\n" +
 "  --databases=<dir>     Base directory for temporary databases [default: construct_from_path_and_org]\n" +
-"  --resumable=<bool>    Enable resuming [default: true]\n" +
-"  --retries=<count>     Maximum number of times to retry (0 = no retry) [default: 5]\n" +
-"  --retry-delay=<ms>    Milliseconds to wait before retrying [default: 500]\n" +
-"  --retry-backoff=<n>   Backoff factor (total_delay = retry_delay * retry_backoff ^ attempt_number) [default: 2]\n" +
 "  --concurrency=<n>     Concurrent API requests [default: 1000]\n" +
 "  --batch-size=<n>      Export item fetch batch size [default: 100]\n" +
 "  --dry-run             Run the import without making API calls\n" +
@@ -38,14 +34,10 @@ exports.parseOptions = function() {
 		path: opts["<path>"],
 		module: opts["--importer"],
 		organization: parseInt(opts["--organization"], 10),
-		apiKey: opts["--api-key"],
+    pats: opts["--pat"],
 		apiEndpoint: opts["--api-endpoint"],
 		attachmentsPath: opts["--attachments"],
 		databasesPath: opts["--databases"],
-		retries: parseInt(opts["--retries"], 10),
-		retryDelay: parseInt(opts["--retry-delay"], 10),
-		retryBackoff: parseInt(opts["--retry-backoff"], 10),
-		resumable: opts["--resumable"] === "true",
 		concurrency: parseInt(opts["--concurrency"], 10),
 		batchSize: parseInt(opts["--batch-size"], 10),
 		dryRun: opts["--dry-run"],
@@ -80,6 +72,26 @@ exports.initApp = function(options) {
 	require("http").globalAgent.maxSockets = options.concurrency;
 	require("https").globalAgent.maxSockets = options.concurrency;
 
+	if (options.dryRun) {
+		app.addClient(-1, aei.AsanaClientMock.clone());
+		app.client().setLatencyMean(options.latencyMean);
+		app.client().setLatencyStdev(options.latencyStdev);
+	} else {
+    options.pats.forEach(function(pat) {
+      // aei.asana.oauth is broken for this version of the API so manually create
+      var client = new aei.asana.Client(new aei.asana.Dispatcher('auth', {bearer: pat}));
+      try {
+        var user = aei.Future.withPromise(client.users.me()).wait();
+        console.log("Got PAT for " + user.id + ": " + user.name);
+        app.addClient(user.id, client);
+        // Last user is default
+        app.addClient(-1, client);
+      } catch(e) {
+        console.log("Could not get user for PAT " + pat);
+      }
+    });
+	}
+
 	var databasesPath = options.databasesPath;
 	if (databasesPath === "construct_from_path_and_org") {
         databasesPath = "db-" + path.basename(options.path) + "-" + options.organization;
@@ -99,39 +111,20 @@ exports.initApp = function(options) {
 
 	app.setAttachmentsPath(databasesPath + "/" + options.attachmentsPath);
 
-	if (options.dryRun) {
-		app.setClient(aei.AsanaClientMock.clone());
-		app.client().setLatencyMean(options.latencyMean);
-		app.client().setLatencyStdev(options.latencyStdev);
-	} else {
-		app.setClient(aei.asana.Client.basicAuth(options.apiKey));
-	}
-
-	if (options.resumable) {
-		app.setClientCache(aei.AsanaClientCache.clone());
-		app.clientCache().setDbPath(databasesPath + "/cache.sqlite");
-		app.clientCache().setReadOnly(options.dryRun);
-	}
-
-	if (options.retries > 0) {
-		app.setClientRetry(aei.AsanaClientRetry.clone());
-		app.clientRetry().setRetries(options.retries);
-		app.clientRetry().setBackoff(options.retryBackoff);
-		app.clientRetry().setDelay(options.retryDelay);
-	}
-
 	return app;
 }
 
 exports.main = function() {
-	var options = exports.parseOptions();
-	var app = exports.initApp(options);
-	app.start().resolve(function(err) {
-		if (err) {
-			console.log(err.stack || err);
-			process.exit(1);
-		}
-	});
+  aei.Future.task(function() {
+    var options = exports.parseOptions();
+    var app = exports.initApp(options);
+    app.start().resolve(function(err) {
+      if (err) {
+        console.log(err.stack || err);
+        process.exit(1);
+      }
+    });
+  });
 }
 
 if (require.main === module) {
