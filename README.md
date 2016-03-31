@@ -21,7 +21,7 @@ The minimum required command line requirements are an API key, organization ID, 
 
 	asana_export_importer \
 		--organization=20556533848969 \
-		--api-key=5PUmeLPC.tJAE8kFo3vduEtXW9kSgw8x \
+		--pat=mypersonalaccesstoken \
 		example/export.json
 
 You can also specify an importer, organization ID to import into, Asana API key and endpoint, and location to write the attachments list (defaults shown below):
@@ -29,12 +29,14 @@ You can also specify an importer, organization ID to import into, Asana API key 
 	asana_export_importer \
 		--importer=asana_export \
 		--organization=20556533848969 \
-		--api-key=5PUmeLPC.tJAE8kFo3vduEtXW9kSgw8x \
+		--pat=mypersonalaccesstoken \
 		--api-endpoint=https://app.asana.com/api/1.0 \
 		--attachments=db/attachments.json \
 		example/export.json
 
-Demo
+You can specify --pat multiple times for different users.
+
+Demo [Currently not working- replace api key with PAT to make it work]
 ----
 
 Run the following to import an example Asana export into a sample organization (Asana user=asanabot@importsandbox.alexd-test-subdomain.asana.com password=a5anab0t)
@@ -54,4 +56,4 @@ The following does the same thing as the demo script above:
 You can also use a volume to mount your own export file in the container:
 
 	docker run -t -v /path/to/export.json:/data/export.json asana_export_importer \
-		bin/asana_export_importer --api-key=$ASANA_API_KEY --organization=$ASANA_ORGANIZATION /data/export.json
+		bin/asana_export_importer --pat=$ASANA_PAT --organization=$ASANA_ORGANIZATION /data/export.json
