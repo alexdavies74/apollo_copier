@@ -15,6 +15,8 @@ global.aei = require("../lib/asana_export_importer");
 global.sqlite3 = require("sqlite3");
 global.Promise = require("bluebird");
 
+Date.now = function() { return Date.parse("2016-01-01"); }
+
 global.AsanaExportInMemory = ae.AsanaExport.extend().setSlots({
     init: function() {
         ae.AsanaExport.init.call(this);
