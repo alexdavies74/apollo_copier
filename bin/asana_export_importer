@@ -82,7 +82,7 @@ exports.initApp = function(options) {
       var client = new aei.asana.Client(new aei.asana.Dispatcher('auth', {bearer: pat}));
       try {
         var user = aei.Future.withPromise(client.users.me()).wait();
-        console.log("Got PAT for " + user.id + ": " + user.name);
+        console.log("Got PAT for " + user.id + ": " + user.name + "  " + pat);
         app.addClient(user.id, client);
         // Last user is default
         app.addClient(-1, client);
