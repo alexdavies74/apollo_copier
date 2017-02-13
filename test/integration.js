@@ -87,7 +87,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
             ]);
 
             importer._importTeams();
@@ -95,7 +95,7 @@ describe("Integration", function() {
 
             expect(client.teams.create).to.have.callCount(1);
             expect(client.projects.create).to.have.callCount(1);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should create projects with correct 'public' fields (and defaults to false)", function() {
@@ -106,18 +106,18 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
-                { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
-                { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
+                { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
+                { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
             ]);
 
             importer._importTeams();
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(3);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should not create projects for tags or ATMs", function() {
@@ -366,7 +366,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, public: false }
+                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, isBoard: false, public: false }
             ]);
 
             importer._importTeams();
@@ -623,7 +623,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101] }
+                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101] }
             ]);
 
             importer._importTeams();
@@ -660,7 +660,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101] }
+                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101] }
             ]);
 
             importer._importTeams();
