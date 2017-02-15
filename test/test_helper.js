@@ -19,7 +19,6 @@ global.AsanaExportInMemory = ae.AsanaExport.extend().setSlots({
     init: function() {
         ae.AsanaExport.init.call(this);
         this._lines = [];
-        this._sourceIdCounter = 100000000;
         this.db()._db = new sqlite3.Database(":memory:");
     },
     prepareForImport: function() {
