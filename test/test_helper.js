@@ -25,6 +25,7 @@ global.AsanaExportInMemory = ae.AsanaExport.extend().setSlots({
         var self = this;
         this.db().create();
         this._readLines({ readLine: function() { return JSON.stringify(self._lines.shift()); } });
+        this._populateJoinObjectRelationships();
     },
     cleanupAfterImport: function() {
     },

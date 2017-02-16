@@ -110,6 +110,78 @@ describe("AsanaExport", function() {
                 { sourceId: 5, archived: false, name: "project1", color: null, notes: "description", sourceTeamId: 4, sourceMemberIds: [1], sourceFollowerIds: [1], sourceItemIds: [10,11,12] }
             ]);
         });
+
+        it("should return a list project if there are no columns", function() {
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4 });
+            exp.prepareForImport();
+
+            exp.projects().mapPerform("performGets", ["isBoard"]).should.deep.equal([
+                { isBoard: false }
+            ]);
+        });
+
+        it("should return a board project if there are columns", function() {
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4 });
+            exp.addObject(2, "Column", { name: "First column", pot: 1, rank: "V" });
+            exp.prepareForImport();
+
+            exp.projects().mapPerform("performGets", ["isBoard"]).should.deep.equal([
+                { isBoard: true }
+            ]);
+        });
+    });
+
+    describe("#columns()", function() {
+        it("should return no columns", function() {
+            exp.prepareForImport();
+
+            exp.columns().should.deep.equal([]);
+        });
+
+        it("should return a column containing some tasks", function() {
+            exp.addObject(1, "Column", { name: "First column", pot: 12345, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 12345, task: 10, rank: "a" });
+            exp.addObject(3, "ColumnTask", { column: 1, pot: 12345, task: 12, rank: "c" });
+            exp.addObject(4, "ColumnTask", { column: 1, pot: 12345, task: 11, rank: "b" });
+            exp.addObject(10, "Task", { });
+            exp.addObject(11, "Task", { });
+            exp.addObject(12, "Task", { });
+            exp.prepareForImport();
+
+            exp.columns().mapPerform("performGets", ["sourceId", "name", "sourceProjectId", "sourceItemIds"]).should.deep.equal([
+                { sourceId: 1, name: "First column", sourceProjectId: 12345, sourceItemIds: [10,11,12] }
+            ]);
+        });
+    });
+
+    describe("#columnsBySourceProjectId()", function() {
+        it("should return no columns", function() {
+            exp.prepareForImport();
+
+            exp.columnsBySourceProjectId().should.deep.equal({});
+        });
+
+        it("should group columns by project and be in correct order by rank", function() {
+            exp.addObject(1, "Column", { name: "First column", pot: 12345, rank: "a" });
+            exp.addObject(2, "Column", { name: "Third column", pot: 12345, rank: "c" });
+            exp.addObject(3, "Column", { name: "Second column", pot: 12345, rank: "b" });
+            exp.addObject(4, "Column", { name: "Other project column", pot: 23, rank: "b" });
+            exp.prepareForImport();
+
+            var columnsBySourceProjectId = exp.columnsBySourceProjectId();
+
+            Object.keys(columnsBySourceProjectId).length.should.equal(2);
+
+            columnsBySourceProjectId[12345].mapPerform("performGets", ["sourceId", "name"]).should.deep.equal([
+                { sourceId: 1, name: "First column" },
+                { sourceId: 3, name: "Second column" },
+                { sourceId: 2, name: "Third column" }
+            ]);
+
+            columnsBySourceProjectId[23].mapPerform("performGets", ["sourceId", "name"]).should.deep.equal([
+                { sourceId: 4, name: "Other project column" }
+            ]);
+        });
     });
 
     describe("#tags()", function() {
