@@ -17,7 +17,7 @@ describe("Integration", function() {
         importer.setOrganizationId(orgId);
         importer.setExport(exp);
 
-        client = { workspaces: {}, users: {}, teams: {}, projects: {}, tags: {}, tasks: {}, stories: {} };
+        client = { workspaces: {}, users: {}, teams: {}, projects: {}, tags: {}, tasks: {}, stories: {}, dispatcher: {} };
         app.setClient(client);
     });
     
@@ -134,6 +134,35 @@ describe("Integration", function() {
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(0);
+        });
+    });
+
+    describe("#_importColumns()", function() {
+        beforeEach(function() {
+            client.projects.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+        });
+
+        it("should create a column", function() {
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], assignee: null, followers_du: [] });
+            exp.addObject(1, "Column", { name: "column1", pot: 101, rank: "V" });
+            exp.prepareForImport();
+
+            expect(exp.columns().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 1, name: "column1", sourceProjectId: 101, sourceItemIds: [] }
+            ]);
+
+            importer._importColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.been.calledOnce;
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/columns", {
+                name: "column1",
+                project: app.sourceToAsanaMap().at(101)
+            });
         });
     });
 
@@ -411,6 +440,54 @@ describe("Integration", function() {
             // reversed to get correct order
             expect(client.tasks.addTag.getCall(1).args).to.deep.equal([app.sourceToAsanaMap().at(301), { tag: app.sourceToAsanaMap().at(100) }]);
             expect(client.tasks.addTag.getCall(0).args).to.deep.equal([app.sourceToAsanaMap().at(300), { tag: app.sourceToAsanaMap().at(100) }]);
+        });
+    });
+
+    describe("#_addTasksToColumns", function() {
+        beforeEach(function() {
+            client.projects.create = sinon.spy(createMock);
+            client.tasks.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+        });
+
+        it("should add tasks to columns in the correct order", function() {
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], assignee: null, followers_du: [] });
+            exp.addObject(1, "Column", { name: "column1", pot: 101, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 101, task: 10, rank: "a" });
+            exp.addObject(3, "ColumnTask", { column: 1, pot: 101, task: 12, rank: "c" });
+            exp.addObject(4, "ColumnTask", { column: 1, pot: 101, task: 11, rank: "b" });
+            exp.addObject(10, "Task", { followers_du: [], stories: [] });
+            exp.addObject(11, "Task", { followers_du: [], stories: [] });
+            exp.addObject(12, "Task", { followers_du: [], stories: [] });
+            exp.prepareForImport();
+
+            expect(exp.columns().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 1, name: "column1", sourceProjectId: 101, sourceItemIds: [10,11,12] }
+            ]);
+
+            importer._importTasks();
+            importer._importColumns();
+            importer._addTasksToColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            // The first call to dispatcher.post will be to create the column.
+            // Calls 1, 2 & 3 should be adding to columns, in reverse order.
+            expect(client.dispatcher.post).to.have.callCount(4);
+            client.dispatcher.post.getCall(1).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
+                { task: app.sourceToAsanaMap().at(12) }
+            ]);
+            client.dispatcher.post.getCall(2).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
+                { task: app.sourceToAsanaMap().at(11) }
+            ]);
+            client.dispatcher.post.getCall(3).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
+                { task: app.sourceToAsanaMap().at(10) }
+            ]);
         });
     });
 
