@@ -17,7 +17,7 @@ describe("Integration", function() {
         importer.setOrganizationId(orgId);
         importer.setExport(exp);
 
-        client = { workspaces: {}, users: {}, teams: {}, projects: {}, tags: {}, tasks: {}, stories: {} };
+        client = { workspaces: {}, users: {}, teams: {}, projects: {}, tags: {}, tasks: {}, stories: {}, dispatcher: {} };
         app.setClient(client);
     });
     
@@ -87,7 +87,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
             ]);
 
             importer._importTeams();
@@ -95,7 +95,7 @@ describe("Integration", function() {
 
             expect(client.teams.create).to.have.callCount(1);
             expect(client.projects.create).to.have.callCount(1);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should create projects with correct 'public' fields (and defaults to false)", function() {
@@ -106,18 +106,18 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
-                { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
-                { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
+                { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
+                { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
             ]);
 
             importer._importTeams();
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(3);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should not create projects for tags or ATMs", function() {
@@ -134,6 +134,35 @@ describe("Integration", function() {
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(0);
+        });
+    });
+
+    describe("#_importColumns()", function() {
+        beforeEach(function() {
+            client.projects.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+        });
+
+        it("should create a column", function() {
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], assignee: null, followers_du: [] });
+            exp.addObject(1, "Column", { name: "column1", pot: 101, rank: "V" });
+            exp.prepareForImport();
+
+            expect(exp.columns().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 1, name: "column1", sourceProjectId: 101, sourceItemIds: [] }
+            ]);
+
+            importer._importColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.been.calledOnce;
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/columns", {
+                name: "column1",
+                project: app.sourceToAsanaMap().at(101)
+            });
         });
     });
 
@@ -366,7 +395,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, public: false }
+                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, isBoard: false, public: false }
             ]);
 
             importer._importTeams();
@@ -411,6 +440,54 @@ describe("Integration", function() {
             // reversed to get correct order
             expect(client.tasks.addTag.getCall(1).args).to.deep.equal([app.sourceToAsanaMap().at(301), { tag: app.sourceToAsanaMap().at(100) }]);
             expect(client.tasks.addTag.getCall(0).args).to.deep.equal([app.sourceToAsanaMap().at(300), { tag: app.sourceToAsanaMap().at(100) }]);
+        });
+    });
+
+    describe("#_addTasksToColumns", function() {
+        beforeEach(function() {
+            client.projects.create = sinon.spy(createMock);
+            client.tasks.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+        });
+
+        it("should add tasks to columns in the correct order", function() {
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], assignee: null, followers_du: [] });
+            exp.addObject(1, "Column", { name: "column1", pot: 101, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 101, task: 10, rank: "a" });
+            exp.addObject(3, "ColumnTask", { column: 1, pot: 101, task: 12, rank: "c" });
+            exp.addObject(4, "ColumnTask", { column: 1, pot: 101, task: 11, rank: "b" });
+            exp.addObject(10, "Task", { followers_du: [], stories: [] });
+            exp.addObject(11, "Task", { followers_du: [], stories: [] });
+            exp.addObject(12, "Task", { followers_du: [], stories: [] });
+            exp.prepareForImport();
+
+            expect(exp.columns().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 1, name: "column1", sourceProjectId: 101, sourceItemIds: [10,11,12] }
+            ]);
+
+            importer._importTasks();
+            importer._importColumns();
+            importer._addTasksToColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            // The first call to dispatcher.post will be to create the column.
+            // Calls 1, 2 & 3 should be adding to columns, in reverse order.
+            expect(client.dispatcher.post).to.have.callCount(4);
+            client.dispatcher.post.getCall(1).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
+                { task: app.sourceToAsanaMap().at(12) }
+            ]);
+            client.dispatcher.post.getCall(2).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
+                { task: app.sourceToAsanaMap().at(11) }
+            ]);
+            client.dispatcher.post.getCall(3).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
+                { task: app.sourceToAsanaMap().at(10) }
+            ]);
         });
     });
 
@@ -623,7 +700,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101] }
+                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101] }
             ]);
 
             importer._importTeams();
@@ -660,7 +737,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101] }
+                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101] }
             ]);
 
             importer._importTeams();
