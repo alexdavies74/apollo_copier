@@ -152,6 +152,15 @@ describe("AsanaExport", function() {
                 { sourceId: 1, name: "First column", sourceProjectId: 12345, sourceItemIds: [10,11,12] }
             ]);
         });
+
+        it("should give name to a column with empty name", function() {
+            exp.addObject(1, "Column", { name: "", pot: 12345, rank: "V" });
+            exp.prepareForImport();
+
+            exp.columns().mapPerform("performGets", ["sourceId", "name", "sourceProjectId", "sourceItemIds"]).should.deep.equal([
+                { sourceId: 1, name: "Unnamed column", sourceProjectId: 12345, sourceItemIds: [] }
+            ]);
+        });
     });
 
     describe("#columnsBySourceProjectId()", function() {
