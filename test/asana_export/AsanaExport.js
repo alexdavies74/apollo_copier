@@ -290,6 +290,18 @@ describe("AsanaExport", function() {
                 "created task.\nSun Nov 16 2014"
             ]);
         });
+
+        it("should return tasks with a dependency", function() {
+            exp.addObject(1, "Task", { name: "precedent", schedule_status: "UPCOMING", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(2, "Task", { name: "dependent", schedule_status: "UPCOMING", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(3, "TaskDependency", { precedent:1, dependent:2 });
+            exp.prepareForImport();
+
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "sourceBlockingTaskIds"]).should.deep.equal([
+                { sourceId: 1, sourceBlockingTaskIds: [] },
+                { sourceId: 2, sourceBlockingTaskIds: [1] }
+            ]);
+        });
     });
 
     describe("#attachmentDataSource()", function() {
