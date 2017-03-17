@@ -381,6 +381,32 @@ describe("Integration", function() {
         });
     });
 
+    describe("#_addDependenciesToTasks", function() {
+        it("should add dependencies", function() {
+            client.tasks.create = sinon.spy(createMock);
+            client.tasks.update = sinon.spy(emptyMock);
+
+            exp.addObject(100, "Task", { name: "precedent", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(101, "Task", { name: "dependent", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(102, "TaskDependency", { precedent:100, dependent:101 });
+            exp.prepareForImport();
+
+            expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
+                { sourceId: 100, name: "precedent", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
+                { sourceId: 101, name: "dependent", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [100], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+            ]);
+
+            importer._importTasks();
+            importer._addDependenciesToTasks();
+
+            client.tasks.update.should.have.been.calledOnce;
+
+            client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(101), {
+                tasks_blocking_this: [app.sourceToAsanaMap().at(100)]
+            });
+        });
+    });
+
     describe("#_addTasksToProjects", function() {
         it("should add tasks to projects in the correct order", function() {
             client.teams.create = sinon.spy(createMock);
