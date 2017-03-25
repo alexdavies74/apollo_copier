@@ -224,8 +224,8 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 101, name: "task2", notes: "desc", completed: true, dueOn: "2023-11-30 00:00:00", public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null }
+                { sourceId: 100, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 101, name: "task2", notes: "desc", completed: true, dueOn: "2023-11-30 00:00:00", public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null }
             ]);
 
             importer._importTasks();
@@ -253,9 +253,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1", notes: "", completed: false, dueOn: null, public: true, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 101, name: "task2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 102, name: "task3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null }
+                { sourceId: 100, name: "task1", notes: "", completed: false, dueOn: null, public: true, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 101, name: "task2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 102, name: "task3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null }
             ]);
 
             importer._importTasks();
@@ -273,9 +273,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: "NEVER" },
-                { sourceId: 101, name: "task2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}", recurrenceType: "PERIODICALLY" },
-                { sourceId: 102, name: "task3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}", recurrenceType: "WEEKLY" }
+                { sourceId: 100, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: "NEVER" },
+                { sourceId: 101, name: "task2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}", recurrenceType: "PERIODICALLY" },
+                { sourceId: 102, name: "task3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}", recurrenceType: "WEEKLY" }
             ]);
 
             importer._importTasks();
@@ -302,7 +302,7 @@ describe("Integration", function() {
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
                 {
-                    sourceId: 300, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], recurrenceData: null, recurrenceType: null,  stories: [
+                    sourceId: 300, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], recurrenceData: null, recurrenceType: null,  stories: [
                         "created task.\nThu Jan 01 1970",
                         "user1\ncomment1\nMon Nov 17 2014",
                         "user1\ncomment2\nMon Nov 17 2014"
@@ -365,9 +365,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1",    notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [202, 201], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
-                { sourceId: 201, name: "subtask2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
-                { sourceId: 202, name: "subtask3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+                { sourceId: 100, name: "task1",    notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [202, 201], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
+                { sourceId: 201, name: "subtask2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
+                { sourceId: 202, name: "subtask3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
             ]);
 
             importer._importTasks();
@@ -378,6 +378,32 @@ describe("Integration", function() {
             // reversed to get correct order
             expect(client.tasks.setParent.getCall(1).args).to.deep.equal([app.sourceToAsanaMap().at(202), { parent: app.sourceToAsanaMap().at(100) }])
             expect(client.tasks.setParent.getCall(0).args).to.deep.equal([app.sourceToAsanaMap().at(201), { parent: app.sourceToAsanaMap().at(100) }])
+        });
+    });
+
+    describe("#_addDependenciesToTasks", function() {
+        it("should add dependencies", function() {
+            client.tasks.create = sinon.spy(createMock);
+            client.tasks.update = sinon.spy(emptyMock);
+
+            exp.addObject(100, "Task", { name: "precedent", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(101, "Task", { name: "dependent", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(102, "TaskDependency", { precedent:100, dependent:101 });
+            exp.prepareForImport();
+
+            expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
+                { sourceId: 100, name: "precedent", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
+                { sourceId: 101, name: "dependent", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [100], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+            ]);
+
+            importer._importTasks();
+            importer._addDependenciesToTasks();
+
+            client.tasks.update.should.have.been.calledOnce;
+
+            client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(101), {
+                tasks_blocking_this: [app.sourceToAsanaMap().at(100)]
+            });
         });
     });
 
@@ -580,10 +606,10 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 300, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 301, name: "task2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 302, name: "task3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "later", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 303, name: "task4", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "today", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 300, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 301, name: "task2", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 302, name: "task3", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "later", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 303, name: "task4", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: "today", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
             ]);
 
             importer._importTasks();
@@ -609,7 +635,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 300, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [100, 101], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+                { sourceId: 300, name: "task1", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
             ]);
 
             importer._importTasks();

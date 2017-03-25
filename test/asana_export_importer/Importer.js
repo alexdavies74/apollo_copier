@@ -273,6 +273,26 @@ describe("Importer", function() {
         });
     });
 
+    describe("#_addDependenciesToTasks", function() {
+        it("should add dependencies", function() {
+            exp.setMockData({
+                tasks: [
+                    { sourceId: 100, name: "task1", sourceBlockingTaskIds: [] },
+                    { sourceId: 200, name: "task2", sourceBlockingTaskIds: [100] }
+                ]
+            });
+
+            importer._importTasks();
+            importer._addDependenciesToTasks();
+
+            client.tasks.update.should.have.been.calledOnce;
+
+            client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(200), {
+                tasks_blocking_this: [app.sourceToAsanaMap().at(100)]
+            });
+        });
+    });
+
     describe("#_addTasksToProjects", function() {
         it("should add tasks to projects in the correct order", function() {
             exp.setMockData({
