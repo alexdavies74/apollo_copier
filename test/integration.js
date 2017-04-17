@@ -95,7 +95,7 @@ describe("Integration", function() {
 
             expect(client.teams.create).to.have.callCount(1);
             expect(client.projects.create).to.have.callCount(1);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should create projects with correct 'public' fields (and defaults to false)", function() {
@@ -115,9 +115,9 @@ describe("Integration", function() {
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(3);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, columns: undefined, team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should not create projects for tags or ATMs", function() {
