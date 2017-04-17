@@ -91,8 +91,8 @@ describe("Importer", function() {
             var resourceData = client.projects.create.getCall(0).args[0];
             resourceData['team'].should.equal(app.sourceToAsanaMap().at(100));
 
-            // Since we didn't specify that it was a board, it should have no columns
-            (resourceData['columns'] === undefined).should.be.true;
+            // Since we didn't specify that it was a board, it should have list layout
+            resourceData['layout'].should.equal("LIST");
         });
 
         it("should create a board", function() {
@@ -105,7 +105,7 @@ describe("Importer", function() {
             importer._importProjects();
 
             client.projects.create.should.have.been.calledOnce;
-            client.projects.create.getCall(0).args[0]['columns'].should.deep.equal([{ name: "" }]);
+            client.projects.create.getCall(0).args[0]['layout'].should.equal("BOARD");
         });
     });
 
