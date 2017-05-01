@@ -63,6 +63,125 @@ describe("Integration", function() {
         });
     });
 
+    describe("#_importCustomFieldProtos", function() {
+        it("should create text and number field protos", function() {
+            client.dispatcher.post = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.prepareForImport();
+
+            expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 100, name: "Teddy", description: "A text field", type: "text" },
+                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3 }
+            ]);
+
+            importer._importCustomFieldProtos();
+
+            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.callCount(2);
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Teddy",
+                // description: "A text field", TODO
+                type: "text",
+                workspace: orgId
+            });
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Noddy",
+                // description: "A number field", TODO
+                type: "number",
+                precision: 3,
+                workspace: orgId
+            });
+        });
+
+        it("should create enum field protos", function() {
+            // Enum options are the most complex case for what we expect in return from the API. When creating the
+            // enum proto, we expect all the options to also be created and assigned IDs, which we need to read
+            // from the response
+            client.dispatcher.post = sinon.spy(function() {
+                return Promise.resolve({
+                    id: asanaIdCounter++,
+                    enum_options: [
+                        { id: 201 },
+                        { id: 202 }
+                    ]
+                });
+            });
+
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
+            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.prepareForImport();
+
+            expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", options: [
+                    { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
+                    { sourceId: 103, name: "Red Pill", enabled: true, color: "red" }
+                ] }
+            ]);
+
+            importer._importCustomFieldProtos();
+
+            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.callCount(1);
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Eddy",
+                // description: "A enum field", TODO
+                type: "enum",
+                workspace: orgId,
+                enum_options: [
+                    { color: "blue", enabled: true, name: "Blue Pill", sourceId: 104 },
+                    { color: "red", enabled: true, name: "Red Pill", sourceId: 103 }
+                ]
+            });
+
+            // Check that we parsed the IDs of the newly created enum options correctly, and stored them for setting values later
+            expect(app.sourceToAsanaMap().at(104)).to.equal(201);
+            expect(app.sourceToAsanaMap().at(103)).to.equal(202);
+        });
+
+        it("should try again if proto name is already used", function() {
+            // We don't parse the error message, we just assume all errors are caused by name conflicts
+            var attempt = 0;
+            client.dispatcher.post = sinon.spy(function() {
+                attempt++;
+                if (attempt === 1) {
+                    return Promise.reject("Error message about proto name being already used");
+                } else {
+                    return createMock();
+                }
+            });
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.prepareForImport();
+
+            importer._importCustomFieldProtos();
+
+            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.callCount(2);
+
+            // First attempt with name "Teddy"
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Teddy",
+                // description: "A text field", TODO
+                type: "text",
+                workspace: orgId
+            });
+
+            // Second attempt with name like "Teddy (Imported 12345)"
+            expect(client.dispatcher.post).to.have.been.calledWithMatch("/custom_fields", {
+                name: sinon.match(/Teddy \(Imported .*\)/),
+                // description: "A number field", TODO
+                type: "text",
+                workspace: orgId
+            });
+        });
+    });
+
     describe("#_importProjects()", function() {
         beforeEach(function() {
             client.projects.create = sinon.spy(createMock);
@@ -134,6 +253,47 @@ describe("Integration", function() {
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(0);
+        });
+    });
+
+    describe("#_addCustomFieldSettingsToProjects()", function() {
+        it("should add custom field settings to projects", function() {
+            client.projects.create = sinon.spy(createMock);
+            client.projects.addCustomFieldSetting = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(102, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(103, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
+            exp.addObject(104, "CustomPropertyProjectSetting", { project: 103, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(105, "CustomPropertyProjectSetting", { project: 103, proto: 101, is_important: true, rank: "A" });
+            exp.prepareForImport();
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    { sourceCustomFieldProtoId: 101, isImportant: true },
+                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+
+            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(101),
+                is_important: true
+            });
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(100),
+                is_important: true
+            });
         });
     });
 
