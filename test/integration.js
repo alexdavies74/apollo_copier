@@ -599,6 +599,79 @@ describe("Integration", function() {
         });
     });
 
+    describe("#_addCustomFieldValuesToTasks", function() {
+        it("should add custom field values to tasks", function() {
+            client.dispatcher.post = sinon.spy(createMock);
+            client.tasks.create = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
+            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(300, "Task", { name: "task1", description: null, items: [], attachments: [], followers_du: [], stories: [] });
+            exp.addObject(301, "Task", { name: "task2", description: null, items: [], attachments: [], followers_du: [], stories: [] });
+            // TODO a variety of field values
+            exp.prepareForImport();
+
+            expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
+                { sourceId: 100, name: "precedent", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  },
+                { sourceId: 101, name: "dependent", notes: "", completed: false, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [100], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  }
+            ]);
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    { sourceCustomFieldProtoId: 101, isImportant: true },
+                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+
+            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(101),
+                is_important: true
+            });
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(100),
+                is_important: true
+            });
+            client.teams.create = sinon.spy(createMock);
+            client.projects.create = sinon.spy(createMock);
+            client.tasks.create = sinon.spy(createMock);
+            client.tasks.addProject = sinon.spy(emptyMock);
+
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(200, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [301, 300], followers_du: [], assignee: null });
+            exp.addObject(300, "Task", { name: "task1", description: null, items: [], attachments: [], followers_du: [], stories: [] });
+            exp.addObject(301, "Task", { name: "task2", description: null, items: [], attachments: [], followers_du: [], stories: [] });
+            exp.prepareForImport();
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, isBoard: false, public: false, customFieldSettings: [] }
+            ]);
+
+            importer._importTeams();
+            importer._importProjects();
+            importer._importTasks();
+            importer._addTasksToProjects();
+
+            expect(client.teams.create).to.have.callCount(1);
+            expect(client.projects.create).to.have.callCount(1);
+            expect(client.tasks.create).to.have.callCount(2);
+            expect(client.tasks.addProject).to.have.callCount(2);
+            // reversed to get correct order
+            expect(client.tasks.addProject.getCall(1).args).to.deep.equal([app.sourceToAsanaMap().at(301), { project: app.sourceToAsanaMap().at(200) }]);
+            expect(client.tasks.addProject.getCall(0).args).to.deep.equal([app.sourceToAsanaMap().at(300), { project: app.sourceToAsanaMap().at(200) }]);
+        });
+    });
+
     describe("#_addTasksToTags", function() {
         it("should add tasks to tags in the correct order", function() {
             client.tags.createInWorkspace = sinon.spy(createMock);
