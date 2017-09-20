@@ -52,15 +52,15 @@ describe("Importer", function() {
             expect(exp.users().length).to.equal(3);
             expect(exp.teams().length).to.equal(3);
             expect(exp.projects().length).to.equal(5);
-            expect(exp.taskDataSource()(0,1000).length).to.equal(25);
+            expect(exp.taskDataSource()(0,1000).length).to.equal(26);
             expect(exp.attachmentDataSource()(0,1000).length).to.equal(1);
 
             expect(client.projects.create).to.have.callCount(5);
-            expect(client.stories.createOnTask).to.have.callCount(80);
+            expect(client.stories.createOnTask).to.have.callCount(81);
             expect(client.tags.createInWorkspace).to.have.callCount(3);
             expect(client.tasks.addProject).to.have.callCount(20);
             expect(client.tasks.addTag).to.have.callCount(5);
-            expect(client.tasks.create).to.have.callCount(25);
+            expect(client.tasks.create).to.have.callCount(26);
             expect(client.tasks.update).to.have.callCount(6);
             expect(client.tasks.setParent).to.have.callCount(6);
             expect(client.teams.create).to.have.callCount(3);
