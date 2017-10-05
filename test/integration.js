@@ -83,13 +83,13 @@ describe("Integration", function() {
             expect(client.dispatcher.post).to.have.callCount(2);
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
                 name: "Teddy",
-                // description: "A text field", TODO
+                description: "A text field",
                 type: "text",
                 workspace: orgId
             });
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
                 name: "Noddy",
-                // description: "A number field", TODO
+                description: "A number field",
                 type: "number",
                 precision: 3,
                 workspace: orgId
@@ -129,7 +129,7 @@ describe("Integration", function() {
             expect(client.dispatcher.post).to.have.callCount(1);
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
                 name: "Eddy",
-                // description: "A enum field", TODO
+                description: "A enum field",
                 type: "enum",
                 workspace: orgId,
                 enum_options: [
@@ -167,7 +167,7 @@ describe("Integration", function() {
             // First attempt with name "Teddy"
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
                 name: "Teddy",
-                // description: "A text field", TODO
+                description: "A text field",
                 type: "text",
                 workspace: orgId
             });
@@ -175,7 +175,7 @@ describe("Integration", function() {
             // Second attempt with name like "Teddy (Imported 12345)"
             expect(client.dispatcher.post).to.have.been.calledWithMatch("/custom_fields", {
                 name: sinon.match(/Teddy \(Imported .*\)/),
-                // description: "A number field", TODO
+                description: "A text field",
                 type: "text",
                 workspace: orgId
             });
@@ -695,14 +695,16 @@ describe("Integration", function() {
             var task1CustomFields = {};
             task1CustomFields[app.sourceToAsanaMap().at(100)] = "Yo";
             client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(300), {
-                custom_fields: task1CustomFields
+                custom_fields: task1CustomFields,
+                force_write_custom_fields: true
             });
 
             var task2CustomFields = {};
             task2CustomFields[app.sourceToAsanaMap().at(101)] = "3.142";
             task2CustomFields[app.sourceToAsanaMap().at(102)] = app.sourceToAsanaMap().at(104);
             client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(301), {
-                custom_fields: task2CustomFields
+                custom_fields: task2CustomFields,
+                force_write_custom_fields: true
             });
         });
     });
