@@ -228,21 +228,21 @@ describe("AsanaExport", function() {
             exp.addObject(4, "Team", { name: "team1", team_type: "REQUEST_TO_JOIN" });
             exp.addObject(5, "ItemList", { followers_du: [], name: "project1", description: "description", is_project: true, is_archived: false, items: [7], team: 4, stories: [] });
             exp.addObject(6, "ItemList", { followers_du: [], name: "tag1", is_project: false, is_archived: false, items: [7], team: 4, stories: [] });
-            exp.addObject(7, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", rich_description: "description", assignee: 3, attachments: [], items: [8], stories: [], followers_du: [3] });
+            exp.addObject(7, "Task", { name: "task1", schedule_status: "UPCOMING", start_date: "2023-11-15 00:00:00", due_date: "2023-11-30 00:00:00", rich_description: "description", assignee: 3, attachments: [], items: [8], stories: [], followers_du: [3] });
             exp.addObject(8, "Task", { name: "subtask1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", rich_description: "description", assignee: 3, attachments: [], items: [], stories: [], followers_du: [3] });
             exp.prepareForImport();
 
-            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
-                { sourceId: 7, name: "task1",    notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [8], sourceAssigneeId: 1, sourceFollowerIds: [1] },
-                { sourceId: 8, name: "subtask1", notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [],  sourceAssigneeId: 1, sourceFollowerIds: [1] }
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "startOn", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
+                { sourceId: 7, name: "task1",    notes: "description", completed: false, startOn: "2023-11-15 00:00:00", dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [8], sourceAssigneeId: 1, sourceFollowerIds: [1] },
+                { sourceId: 8, name: "subtask1", notes: "description", completed: false, startOn: null, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [],  sourceAssigneeId: 1, sourceFollowerIds: [1] }
             ]);
         });
 
         it("should not return trashed Tasks", function() {
-            exp.addObject(1, "Task", { __trashed_at: "2023-11-30 00:00:00", name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(1, "Task", { __trashed_at: "2023-11-30 00:00:00", name: "task1", schedule_status: "UPCOMING", start_date: "2023-11-15 00:00:00", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [], followers_du: [] });
             exp.prepareForImport();
 
-            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([]);
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "startOn", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([]);
         });
 
         it("should fall back to description if rich_description unavailable", function() {
@@ -250,7 +250,7 @@ describe("AsanaExport", function() {
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
-                { sourceId: 1, name: "task1",    notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [], sourceAssigneeId: null, sourceFollowerIds: [] }
+                { sourceId: 1, name: "task1", notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [], sourceAssigneeId: null, sourceFollowerIds: [] }
             ]);
         });
 
