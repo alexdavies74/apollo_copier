@@ -63,6 +63,125 @@ describe("Integration", function() {
         });
     });
 
+    describe("#_importCustomFieldProtos", function() {
+        it("should create text and number field protos", function() {
+            client.dispatcher.post = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.prepareForImport();
+
+            expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 100, name: "Teddy", description: "A text field", type: "text" },
+                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3 }
+            ]);
+
+            importer._importCustomFieldProtos();
+
+            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.callCount(2);
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Teddy",
+                description: "A text field",
+                type: "text",
+                workspace: orgId
+            });
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Noddy",
+                description: "A number field",
+                type: "number",
+                precision: 3,
+                workspace: orgId
+            });
+        });
+
+        it("should create enum field protos", function() {
+            // Enum options are the most complex case for what we expect in return from the API. When creating the
+            // enum proto, we expect all the options to also be created and assigned IDs, which we need to read
+            // from the response
+            client.dispatcher.post = sinon.spy(function() {
+                return Promise.resolve({
+                    id: asanaIdCounter++,
+                    enum_options: [
+                        { id: 201 },
+                        { id: 202 }
+                    ]
+                });
+            });
+
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
+            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.prepareForImport();
+
+            expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", options: [
+                    { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
+                    { sourceId: 103, name: "Red Pill", enabled: true, color: "red" }
+                ] }
+            ]);
+
+            importer._importCustomFieldProtos();
+
+            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.callCount(1);
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Eddy",
+                description: "A enum field",
+                type: "enum",
+                workspace: orgId,
+                enum_options: [
+                    { color: "blue", enabled: true, name: "Blue Pill", sourceId: 104 },
+                    { color: "red", enabled: true, name: "Red Pill", sourceId: 103 }
+                ]
+            });
+
+            // Check that we parsed the IDs of the newly created enum options correctly, and stored them for setting values later
+            expect(app.sourceToAsanaMap().at(104)).to.equal(201);
+            expect(app.sourceToAsanaMap().at(103)).to.equal(202);
+        });
+
+        it("should try again if proto name is already used", function() {
+            // We don't parse the error message, we just assume all errors are caused by name conflicts
+            var attempt = 0;
+            client.dispatcher.post = sinon.spy(function() {
+                attempt++;
+                if (attempt === 1) {
+                    return Promise.reject("Error message about proto name being already used");
+                } else {
+                    return createMock();
+                }
+            });
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.prepareForImport();
+
+            importer._importCustomFieldProtos();
+
+            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.dispatcher.post).to.have.callCount(2);
+
+            // First attempt with name "Teddy"
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                name: "Teddy",
+                description: "A text field",
+                type: "text",
+                workspace: orgId
+            });
+
+            // Second attempt with name like "Teddy (Imported 12345)"
+            expect(client.dispatcher.post).to.have.been.calledWithMatch("/custom_fields", {
+                name: sinon.match(/Teddy \(Imported .*\)/),
+                description: "A text field",
+                type: "text",
+                workspace: orgId
+            });
+        });
+    });
+
     describe("#_importProjects()", function() {
         beforeEach(function() {
             client.projects.create = sinon.spy(createMock);
@@ -87,7 +206,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] }
             ]);
 
             importer._importTeams();
@@ -106,9 +225,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
-                { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] },
-                { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [] }
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] },
+                { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] },
+                { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] }
             ]);
 
             importer._importTeams();
@@ -134,6 +253,47 @@ describe("Integration", function() {
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(0);
+        });
+    });
+
+    describe("#_addCustomFieldSettingsToProjects()", function() {
+        it("should add custom field settings to projects", function() {
+            client.projects.create = sinon.spy(createMock);
+            client.projects.addCustomFieldSetting = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(102, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(103, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
+            exp.addObject(104, "CustomPropertyProjectSetting", { project: 103, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(105, "CustomPropertyProjectSetting", { project: 103, proto: 101, is_important: true, rank: "A" });
+            exp.prepareForImport();
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    { sourceCustomFieldProtoId: 101, isImportant: true },
+                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+
+            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(101),
+                is_important: true
+            });
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(100),
+                is_important: true
+            });
         });
     });
 
@@ -224,8 +384,8 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 101, name: "task2", notes: "desc", completed: true, startOn: "2023-11-15 00:00:00", dueOn: "2023-11-30 00:00:00", public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null }
+                { sourceId: 100, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
+                { sourceId: 101, name: "task2", notes: "desc", completed: true, startOn: "2023-11-15 00:00:00", dueOn: "2023-11-30 00:00:00", public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nSun Nov 16 2014"], recurrenceData: null, recurrenceType: null, customFieldValues: [] }
             ]);
 
             importer._importTasks();
@@ -253,9 +413,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: true, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 101, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 102, name: "task3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null }
+                { sourceId: 100, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: true, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
+                { sourceId: 101, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
+                { sourceId: 102, name: "task3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] }
             ]);
 
             importer._importTasks();
@@ -273,9 +433,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: "NEVER" },
-                { sourceId: 101, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}", recurrenceType: "PERIODICALLY" },
-                { sourceId: 102, name: "task3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}", recurrenceType: "WEEKLY" }
+                { sourceId: 100, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: "NEVER", customFieldValues: [] },
+                { sourceId: 101, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}", recurrenceType: "PERIODICALLY", customFieldValues: [] },
+                { sourceId: 102, name: "task3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}", recurrenceType: "WEEKLY", customFieldValues: [] }
             ]);
 
             importer._importTasks();
@@ -302,7 +462,7 @@ describe("Integration", function() {
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
                 {
-                  sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], recurrenceData: null, recurrenceType: null,  stories: [
+                    sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], recurrenceData: null, recurrenceType: null, customFieldValues: [],  stories: [
                         "created task.\nThu Jan 01 1970",
                         "user1\ncomment1\nMon Nov 17 2014",
                         "user1\ncomment2\nMon Nov 17 2014"
@@ -365,9 +525,9 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "task1",    notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [202, 201], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
-                { sourceId: 201, name: "subtask2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
-                { sourceId: 202, name: "subtask3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+                { sourceId: 100, name: "task1",    notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [202, 201], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  },
+                { sourceId: 201, name: "subtask2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  },
+                { sourceId: 202, name: "subtask3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [],         sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  }
             ]);
 
             importer._importTasks();
@@ -392,8 +552,8 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "precedent", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  },
-                { sourceId: 101, name: "dependent", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [100], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+                { sourceId: 100, name: "precedent", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  },
+                { sourceId: 101, name: "dependent", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [100], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  }
             ]);
 
             importer._importTasks();
@@ -421,7 +581,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, isBoard: false, public: false }
+                { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, isBoard: false, public: false, customFieldSettings: [] }
             ]);
 
             importer._importTeams();
@@ -436,6 +596,116 @@ describe("Integration", function() {
             // reversed to get correct order
             expect(client.tasks.addProject.getCall(1).args).to.deep.equal([app.sourceToAsanaMap().at(301), { project: app.sourceToAsanaMap().at(200) }]);
             expect(client.tasks.addProject.getCall(0).args).to.deep.equal([app.sourceToAsanaMap().at(300), { project: app.sourceToAsanaMap().at(200) }]);
+        });
+    });
+
+    describe("#_addCustomFieldValuesToTasks", function() {
+        it("should add custom field values to tasks", function() {
+            client.teams.create = sinon.spy(createMock);
+            client.projects.create = sinon.spy(createMock);
+            client.projects.addCustomFieldSetting = sinon.spy(createMock);
+            client.tasks.create = sinon.spy(createMock);
+            client.tasks.addProject = sinon.spy(emptyMock);
+            client.tasks.update = sinon.spy(emptyMock);
+
+            // Not every usage of dispatcher.post is to create an enum custom field, but the rest ignore this response
+            client.dispatcher.post = sinon.spy(function() {
+                return Promise.resolve({
+                    id: asanaIdCounter++,
+                    enum_options: [
+                        { id: 1201 },
+                        { id: 1202 }
+                    ]
+                });
+            });
+
+            // This requires an annoying amount of preparation, because tasks outside projects can't get custom field values
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
+            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(150, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(200, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 150, items: [301, 300], followers_du: [], assignee: null });
+            exp.addObject(104, "CustomPropertyProjectSetting", { project: 200, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(105, "CustomPropertyProjectSetting", { project: 200, proto: 101, is_important: true, rank: "A" });
+            exp.addObject(300, "Task", { name: "task1", description: null, items: [], attachments: [], followers_du: [], stories: [] });
+            exp.addObject(301, "Task", { name: "task2", description: null, items: [], attachments: [], followers_du: [], stories: [] });
+            exp.addObject(400, "CustomPropertyTextValue", { object: 300, proto: 100, text: "Yo"});
+            exp.addObject(401, "CustomPropertyNumberValue", { object: 301, proto: 101, digits: "3.142"});
+            exp.addObject(402, "CustomPropertyEnumValue", { object: 301, proto: 102, option: 104});
+            exp.prepareForImport();
+
+            expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
+                { sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null,
+                    customFieldValues: [
+                        {
+                            protoSourceId: 100,
+                            type: "text",
+                            value: "Yo"
+                        }
+                    ]  },
+                { sourceId: 301, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null,
+                    customFieldValues: [
+                        {
+                            protoSourceId: 101,
+                            type: "number",
+                            value: "3.142"
+                        },
+                        {
+                            protoSourceId: 102,
+                            type: "enum",
+                            value: 104
+                        }
+                    ]  }
+            ]);
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 150, sourceItemIds: [301, 300], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    { sourceCustomFieldProtoId: 101, isImportant: true },
+                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+            importer._importTasks();
+            importer._addTasksToProjects();
+            importer._addCustomFieldValuesToTasks();
+
+            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
+            // used directly
+            // expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
+            // expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+            //     custom_field: app.sourceToAsanaMap().at(101),
+            //     is_important: true
+            // });
+            // expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+            //     custom_field: app.sourceToAsanaMap().at(100),
+            //     is_important: true
+            // });
+
+            expect(client.teams.create).to.have.callCount(1);
+            expect(client.projects.create).to.have.callCount(1);
+            expect(client.tasks.create).to.have.callCount(2);
+            expect(client.tasks.addProject).to.have.callCount(2);
+
+            var task1CustomFields = {};
+            task1CustomFields[app.sourceToAsanaMap().at(100)] = "Yo";
+            client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(300), {
+                custom_fields: task1CustomFields,
+                force_write_custom_fields: true
+            });
+
+            var task2CustomFields = {};
+            task2CustomFields[app.sourceToAsanaMap().at(101)] = "3.142";
+            task2CustomFields[app.sourceToAsanaMap().at(102)] = app.sourceToAsanaMap().at(104);
+            client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(301), {
+                custom_fields: task2CustomFields,
+                force_write_custom_fields: true
+            });
         });
     });
 
@@ -606,10 +876,10 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 301, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 302, name: "task3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "later", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
-                { sourceId: 303, name: "task4", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "today", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null },
+                { sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
+                { sourceId: 301, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "upcoming", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
+                { sourceId: 302, name: "task3", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "later", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
+                { sourceId: 303, name: "task4", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: "today", sourceAssigneeId: 100, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: [] },
             ]);
 
             importer._importTasks();
@@ -635,7 +905,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
-                { sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null  }
+                { sourceId: 300, name: "task1", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null, customFieldValues: []  }
             ]);
 
             importer._importTasks();
@@ -726,7 +996,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101] }
+                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101], customFieldSettings: [] }
             ]);
 
             importer._importTeams();
@@ -763,7 +1033,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101] }
+                { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101], customFieldSettings: [] }
             ]);
 
             importer._importTeams();
