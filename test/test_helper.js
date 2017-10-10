@@ -21,13 +21,13 @@ global.AsanaExportInMemory = ae.AsanaExport.extend().setSlots({
     init: function() {
         ae.AsanaExport.init.call(this);
         this._lines = [];
-        this._sourceIdCounter = 100000000;
         this.db()._db = new sqlite3.Database(":memory:");
     },
     prepareForImport: function() {
         var self = this;
         this.db().create();
         this._readLines({ readLine: function() { return JSON.stringify(self._lines.shift()); } });
+        this._populateJoinObjectRelationships();
     },
     cleanupAfterImport: function() {
     },

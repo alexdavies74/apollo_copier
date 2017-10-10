@@ -4,7 +4,7 @@ Asana Export Importer
 Setup
 -----
 
-1. Ensure Node.js v0.10 is installed.
+1. Ensure Node.js v6 is installed.
 2. In the project directory run:
 
 	npm install
