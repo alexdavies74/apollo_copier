@@ -675,18 +675,6 @@ describe("Integration", function() {
             importer._addTasksToProjects();
             importer._addCustomFieldValuesToTasks();
 
-            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
-            // used directly
-            // expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
-            // expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
-            //     custom_field: app.sourceToAsanaMap().at(101),
-            //     is_important: true
-            // });
-            // expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
-            //     custom_field: app.sourceToAsanaMap().at(100),
-            //     is_important: true
-            // });
-
             expect(client.teams.create).to.have.callCount(1);
             expect(client.projects.create).to.have.callCount(1);
             expect(client.tasks.create).to.have.callCount(2);
