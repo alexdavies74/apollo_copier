@@ -274,7 +274,7 @@ describe("AsanaExport", function() {
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50)[0].stories().should.deep.equal([
-                { text: "MY COMMENT", creator: 3 }
+                { text: "MY COMMENT", creator: 1 }
             ]);
         });
 
