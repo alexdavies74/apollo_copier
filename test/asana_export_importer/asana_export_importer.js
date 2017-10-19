@@ -93,9 +93,6 @@ describe("asana_export_importer", function() {
             expect(app.attachmentsPath()).to.equal("db1/attachments1.json");
             expect(app.sourceToAsanaMap().dbPath()).to.equal("db1/mapping.sqlite");
 
-            expect(app.clientCache()).to.equal(null);
-            expect(app.clientRetry()).to.equal(null);
-
             expect(app.importer().concurrency()).to.equal(5555);
             expect(app.importer().export().batchSize()).to.equal(6666);
         });
@@ -122,7 +119,7 @@ describe("asana_export_importer", function() {
             var clientRetry = clientCache.client();
 
             expect(clientCache).to.not.equal(null);
-            expect(clientCache.dbPath()).to.equal("db1/cache.sqlite");
+            expect(clientCache.dbPath()).to.equal("db1/cache1234.sqlite");
 
             expect(clientRetry).to.not.equal(null);
             expect(clientRetry.retries()).to.equal(2222);
