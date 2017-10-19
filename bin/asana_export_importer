@@ -99,26 +99,32 @@ exports.initApp = function(options) {
 
 	app.setAttachmentsPath(databasesPath + "/" + options.attachmentsPath);
 
+	var apiClient;
 	if (options.dryRun) {
-		app.setClient(aei.AsanaClientMock.clone());
-		app.client().setLatencyMean(options.latencyMean);
-		app.client().setLatencyStdev(options.latencyStdev);
+		apiClient = aei.AsanaClientMock.clone();
+		apiClient.setLatencyMean(options.latencyMean);
+		apiClient.setLatencyStdev(options.latencyStdev);
 	} else {
-		app.setClient(aei.asana.Client.basicAuth(options.apiKey));
-	}
-
-	if (options.resumable) {
-		app.setClientCache(aei.AsanaClientCache.clone());
-		app.clientCache().setDbPath(databasesPath + "/cache.sqlite");
-		app.clientCache().setReadOnly(options.dryRun);
+		apiClient = aei.asana.Client.basicAuth(options.apiKey);
 	}
 
 	if (options.retries > 0) {
-		app.setClientRetry(aei.AsanaClientRetry.clone());
-		app.clientRetry().setRetries(options.retries);
-		app.clientRetry().setBackoff(options.retryBackoff);
-		app.clientRetry().setDelay(options.retryDelay);
+		var clientRetry = aei.AsanaClientRetry.clone();
+		clientRetry.setRetries(options.retries);
+		clientRetry.setBackoff(options.retryBackoff);
+		clientRetry.setDelay(options.retryDelay);
+		apiClient = clientRetry;
 	}
+
+	if (options.resumable) {
+		var clientCache = aei.AsanaClientCache.clone();
+		clientCache.setClient(apiClient);
+		clientCache.setDbPath(databasesPath + "/cache.sqlite");
+		clientCache.setReadOnly(options.dryRun);
+		apiClient = clientCache;
+	}
+
+	app.setClient(apiClient);
 
 	return app;
 }
