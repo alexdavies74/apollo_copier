@@ -116,13 +116,18 @@ describe("asana_export_importer", function() {
 
             var app = asana_export_importer.initApp(asana_export_importer.parseOptions());
 
-            expect(app.clientCache()).to.not.equal(null);
-            expect(app.clientCache().dbPath()).to.equal("db1/cache.sqlite");
+            // We expect the client to be wrapped first in an AsanaClientRetry, then an AsanaClientCache.
+            // Unwrap them in reverse
+            var clientCache = app.apiClient();
+            var clientRetry = clientCache.client();
 
-            expect(app.clientRetry()).to.not.equal(null);
-            expect(app.clientRetry().retries()).to.equal(2222);
-            expect(app.clientRetry().delay()).to.equal(3333);
-            expect(app.clientRetry().backoff()).to.equal(4444);
+            expect(clientCache).to.not.equal(null);
+            expect(clientCache.dbPath()).to.equal("db1/cache.sqlite");
+
+            expect(clientRetry).to.not.equal(null);
+            expect(clientRetry.retries()).to.equal(2222);
+            expect(clientRetry.delay()).to.equal(3333);
+            expect(clientRetry.backoff()).to.equal(4444);
         });
     });
 });

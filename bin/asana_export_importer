@@ -80,26 +80,6 @@ exports.initApp = function(options) {
 	require("http").globalAgent.maxSockets = options.concurrency;
 	require("https").globalAgent.maxSockets = options.concurrency;
 
-	if (options.dryRun) {
-		app.addClient(-1, aei.AsanaClientMock.clone());
-		app.client().setLatencyMean(options.latencyMean);
-		app.client().setLatencyStdev(options.latencyStdev);
-	} else {
-    options.pats.forEach(function(pat) {
-      // aei.asana.oauth is broken for this version of the API so manually create
-      var client = new aei.asana.Client(new aei.asana.Dispatcher('auth', {bearer: pat}));
-      try {
-        var user = aei.Future.withPromise(client.users.me()).wait();
-        console.log("Got PAT for " + user.id + ": " + user.name + "  " + pat);
-        app.addClient(user.id, client);
-        // Last user is default
-        app.addClient(-1, client);
-      } catch(e) {
-        console.log("Could not get user for PAT " + pat);
-      }
-    });
-	}
-
 	var databasesPath = options.databasesPath;
 	if (databasesPath === "construct_from_path_and_org") {
         databasesPath = "db-" + path.basename(options.path) + "-" + options.organization;
@@ -118,6 +98,45 @@ exports.initApp = function(options) {
 	app.sourceToAsanaMap().setReadOnly(options.dryRun);
 
 	app.setAttachmentsPath(databasesPath + "/" + options.attachmentsPath);
+
+	if (options.dryRun) {
+		var apiClient = aei.AsanaClientMock.clone();
+		apiClient.setLatencyMean(options.latencyMean);
+		apiClient.setLatencyStdev(options.latencyStdev);
+		app.addClient(-1, apiClient);
+	} else {
+		options.pats.forEach(function(pat) {
+			// aei.asana.oauth is broken for this version of the API so manually create
+			var apiClient = new aei.asana.Client(new aei.asana.Dispatcher('auth', {bearer: pat}));
+			var user;
+			try {
+				user = aei.Future.withPromise(apiClient.users.me()).wait();
+				console.log("Got PAT for " + user.id + ": " + user.name + "  " + pat);
+			} catch(e) {
+				console.log("Could not get user for PAT " + pat);
+			}
+
+			if (options.retries > 0) {
+				var clientRetry = aei.AsanaClientRetry.clone();
+				clientRetry.setRetries(options.retries);
+				clientRetry.setBackoff(options.retryBackoff);
+				clientRetry.setDelay(options.retryDelay);
+				apiClient = clientRetry;
+			}
+
+			if (options.resumable) {
+				var clientCache = aei.AsanaClientCache.clone();
+				clientCache.setClient(apiClient);
+				clientCache.setDbPath(databasesPath + "/cache" + user.id + ".sqlite");
+				clientCache.setReadOnly(options.dryRun);
+				apiClient = clientCache;
+			}
+
+			app.addClient(user.id, apiClient);
+			// Last user is also default
+			app.addClient(-1, apiClient);
+		});
+	}
 
 	return app;
 }
