@@ -23,6 +23,10 @@ describe("asana_export_importer", function() {
             expect(options.apiEndpoint).to.equal(aei.asana.Dispatcher.ROOT_URL);
             expect(options.attachmentsPath).to.equal("attachments.json");
             expect(options.databasesPath).to.equal("construct_from_path_and_org");
+            expect(options.retries).to.equal(5);
+            expect(options.retryDelay).to.equal(500);
+            expect(options.retryBackoff).to.equal(2);
+            expect(options.resumable).to.equal(true);
             expect(options.concurrency).to.equal(1000);
             expect(options.batchSize).to.equal(100);
             expect(options.dryRun).to.equal(false);
@@ -36,6 +40,10 @@ describe("asana_export_importer", function() {
                 "--api-endpoint=http://example.com/",
                 "--attachments=attachments1.json",
                 "--databases=db1",
+                "--retries=2222",
+                "--retry-delay=3333",
+                "--retry-backoff=4444",
+                "--resumable=false",
                 "--concurrency=5555",
                 "--batch-size=6666",
                 "--dry-run",
@@ -51,6 +59,10 @@ describe("asana_export_importer", function() {
             expect(options.apiEndpoint).to.equal("http://example.com/");
             expect(options.attachmentsPath).to.equal("attachments1.json");
             expect(options.databasesPath).to.equal("db1");
+            expect(options.retries).to.equal(2222);
+            expect(options.retryDelay).to.equal(3333);
+            expect(options.retryBackoff).to.equal(4444);
+            expect(options.resumable).to.equal(false);
             expect(options.concurrency).to.equal(5555);
             expect(options.batchSize).to.equal(6666);
             expect(options.dryRun).to.equal(true);
@@ -65,23 +77,52 @@ describe("asana_export_importer", function() {
                 "--api-endpoint=http://example.com/",
                 "--attachments=attachments1.json",
                 "--databases=db1",
+                "--retries=0",
+                "--resumable=false",
                 "--concurrency=5555",
                 "--batch-size=6666",
                 "path"
             ];
-            aei.Future.task(function() {
-              var app = asana_export_importer.initApp(asana_export_importer.parseOptions());
 
-              expect(app.importer().export().path()).to.equal("path");
-              expect(app.importer().organizationId()).to.equal(1111);
-              expect(app.apiClient().dispatcher.authValue).to.equal("key");
-              expect(aei.asana.Dispatcher.ROOT_URL).to.equal("http://example.com/");
-              expect(app.attachmentsPath()).to.equal("db1/attachments1.json");
-              expect(app.sourceToAsanaMap().dbPath()).to.equal("db1/mapping.sqlite");
+            var app = asana_export_importer.initApp(asana_export_importer.parseOptions());
 
-              expect(app.importer().concurrency()).to.equal(5555);
-              expect(app.importer().export().batchSize()).to.equal(6666);
-            });
+            expect(app.importer().export().path()).to.equal("path");
+            expect(app.importer().organizationId()).to.equal(1111);
+            expect(app.apiClient().dispatcher.authValue.user).to.equal("key");
+            expect(aei.asana.Dispatcher.ROOT_URL).to.equal("http://example.com/");
+            expect(app.attachmentsPath()).to.equal("db1/attachments1.json");
+            expect(app.sourceToAsanaMap().dbPath()).to.equal("db1/mapping.sqlite");
+
+            expect(app.clientCache()).to.equal(null);
+            expect(app.clientRetry()).to.equal(null);
+
+            expect(app.importer().concurrency()).to.equal(5555);
+            expect(app.importer().export().batchSize()).to.equal(6666);
+        });
+    });
+
+    describe("#initApp", function() {
+        it("should set the cache and retry middleware parameters", function() {
+            process.argv = ["node", "asana_export_importer",
+                "--pat=key",
+                "--organization=1111",
+                "--databases=db1",
+                "--retries=2222",
+                "--retry-delay=3333",
+                "--retry-backoff=4444",
+                "--resumable=true",
+                "path"
+            ];
+
+            var app = asana_export_importer.initApp(asana_export_importer.parseOptions());
+
+            expect(app.clientCache()).to.not.equal(null);
+            expect(app.clientCache().dbPath()).to.equal("db1/cache.sqlite");
+
+            expect(app.clientRetry()).to.not.equal(null);
+            expect(app.clientRetry().retries()).to.equal(2222);
+            expect(app.clientRetry().delay()).to.equal(3333);
+            expect(app.clientRetry().backoff()).to.equal(4444);
         });
     });
 });

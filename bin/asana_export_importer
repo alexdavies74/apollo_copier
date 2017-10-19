@@ -20,6 +20,10 @@ exports.doc =
 "  --api-endpoint=<url>  Asana API endpoint [default: " + aei.asana.Dispatcher.ROOT_URL + "]\n" +
 "  --attachments=<file>  Attachments file to write to, relative to the databases directory [default: attachments.json]\n" +
 "  --databases=<dir>     Base directory for temporary databases [default: construct_from_path_and_org]\n" +
+"  --resumable=<bool>    Enable resuming [default: true]\n" +
+"  --retries=<count>     Maximum number of times to retry (0 = no retry) [default: 5]\n" +
+"  --retry-delay=<ms>    Milliseconds to wait before retrying [default: 500]\n" +
+"  --retry-backoff=<n>   Backoff factor (total_delay = retry_delay * retry_backoff ^ attempt_number) [default: 2]\n" +
 "  --concurrency=<n>     Concurrent API requests [default: 1000]\n" +
 "  --batch-size=<n>      Export item fetch batch size [default: 100]\n" +
 "  --dry-run             Run the import without making API calls\n" +
@@ -38,6 +42,10 @@ exports.parseOptions = function() {
 		apiEndpoint: opts["--api-endpoint"],
 		attachmentsPath: opts["--attachments"],
 		databasesPath: opts["--databases"],
+		retries: parseInt(opts["--retries"], 10),
+		retryDelay: parseInt(opts["--retry-delay"], 10),
+		retryBackoff: parseInt(opts["--retry-backoff"], 10),
+		resumable: opts["--resumable"] === "true",
 		concurrency: parseInt(opts["--concurrency"], 10),
 		batchSize: parseInt(opts["--batch-size"], 10),
 		dryRun: opts["--dry-run"],
@@ -115,16 +123,14 @@ exports.initApp = function(options) {
 }
 
 exports.main = function() {
-  aei.Future.task(function() {
-    var options = exports.parseOptions();
-    var app = exports.initApp(options);
-    app.start().resolve(function(err) {
-      if (err) {
-        console.log(err.stack || err);
-        process.exit(1);
-      }
-    });
-  });
+	var options = exports.parseOptions();
+	var app = exports.initApp(options);
+	app.start().resolve(function(err) {
+		if (err) {
+			console.log(err.stack || err);
+			process.exit(1);
+		}
+	});
 }
 
 if (require.main === module) {
