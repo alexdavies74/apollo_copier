@@ -120,7 +120,7 @@ exports.initApp = function(options) {
 					user = aei.Future.withPromise(apiClient.users.me()).wait();
 					console.log("Got PAT for " + user.id + ": " + user.name + "  " + pat);
 				} catch (e) {
-					console.log("Could not get user for PAT " + pat);
+					console.log("Could not get user for PAT " + pat, e);
 				}
 			}
 
