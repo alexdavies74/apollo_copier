@@ -106,7 +106,8 @@ exports.initApp = function(options) {
 		app.addClient(-1, apiClient);
 	} else {
 		options.pats.forEach(function(pat) {
-			var apiClient = aei.asana.Client.basicAuth(pat);
+			// aei.asana.oauth is broken for this version of the API so manually create
+			var apiClient = new aei.asana.Client(new aei.asana.Dispatcher('auth', {bearer: pat}));
 
 			var user;
 			if (pat === "key") {
