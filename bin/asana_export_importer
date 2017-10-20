@@ -150,13 +150,15 @@ exports.initApp = function(options) {
 }
 
 exports.main = function() {
-	var options = exports.parseOptions();
-	var app = exports.initApp(options);
-	app.start().resolve(function(err) {
-		if (err) {
-			console.log(err.stack || err);
-			process.exit(1);
-		}
+	aei.Future.task(function() {
+		var options = exports.parseOptions();
+		var app = exports.initApp(options);
+		app.start().resolve(function (err) {
+			if (err) {
+				console.log(err.stack || err);
+				process.exit(1);
+			}
+		});
 	});
 }
 
