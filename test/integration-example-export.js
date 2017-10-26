@@ -14,6 +14,10 @@ describe("Importer", function() {
         app = createApp();
         exp = ae.AsanaExport.clone();
         exp.setPath("example/export.json");
+        if (exp.db().exists()) {
+            // Need a fresh db each time
+            exp.db().destroy();
+        }
         importer = app.importer();
         importer.setOrganizationId(1);
         importer.setExport(exp);
@@ -40,6 +44,7 @@ describe("Importer", function() {
             client.workspaces.addUser = sinon.spy(emptyMock);
             client.workspaces.tags = sinon.stub().returns(Promise.resolve([]));
 
+            // Disable the file system because we don't have a
             sandbox.stub(require("fs"), "appendFile", function (path, text, callback) { callback(null); });
 
             importer.run();
@@ -47,7 +52,7 @@ describe("Importer", function() {
             expect(exp.users().length).to.equal(3);
             expect(exp.teams().length).to.equal(3);
             expect(exp.projects().length).to.equal(5);
-            expect(exp.taskDataSource()(0,1000).length).to.equal(25);
+            expect(exp.taskDataSource()(0,1000).length).to.equal(26);
             expect(exp.attachmentDataSource()(0,1000).length).to.equal(1);
 
             expect(client.projects.create).to.have.callCount(5);
@@ -55,8 +60,8 @@ describe("Importer", function() {
             expect(client.tags.createInWorkspace).to.have.callCount(3);
             expect(client.tasks.addProject).to.have.callCount(20);
             expect(client.tasks.addTag).to.have.callCount(5);
-            expect(client.tasks.create).to.have.callCount(25);
-            // expect(client.tasks.update).to.have.callCount(12);
+            expect(client.tasks.create).to.have.callCount(26);
+            expect(client.tasks.update).to.have.callCount(6);
             expect(client.tasks.setParent).to.have.callCount(6);
             expect(client.teams.create).to.have.callCount(3);
             expect(client.workspaces.addUser).to.have.callCount(3);

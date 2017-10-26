@@ -110,6 +110,87 @@ describe("AsanaExport", function() {
                 { sourceId: 5, archived: false, name: "project1", color: null, notes: "description", sourceTeamId: 4, sourceMemberIds: [1], sourceFollowerIds: [1], sourceItemIds: [10,11,12] }
             ]);
         });
+
+        it("should return a list project if there are no columns", function() {
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4 });
+            exp.prepareForImport();
+
+            exp.projects().mapPerform("performGets", ["isBoard"]).should.deep.equal([
+                { isBoard: false }
+            ]);
+        });
+
+        it("should return a board project if there are columns", function() {
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4 });
+            exp.addObject(2, "Column", { name: "First column", pot: 1, rank: "V" });
+            exp.prepareForImport();
+
+            exp.projects().mapPerform("performGets", ["isBoard"]).should.deep.equal([
+                { isBoard: true }
+            ]);
+        });
+    });
+
+    describe("#columns()", function() {
+        it("should return no columns", function() {
+            exp.prepareForImport();
+
+            exp.columns().should.deep.equal([]);
+        });
+
+        it("should return a column containing some tasks", function() {
+            exp.addObject(1, "Column", { name: "First column", pot: 12345, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 12345, task: 10, rank: "a" });
+            exp.addObject(3, "ColumnTask", { column: 1, pot: 12345, task: 12, rank: "c" });
+            exp.addObject(4, "ColumnTask", { column: 1, pot: 12345, task: 11, rank: "b" });
+            exp.addObject(10, "Task", { });
+            exp.addObject(11, "Task", { });
+            exp.addObject(12, "Task", { });
+            exp.prepareForImport();
+
+            exp.columns().mapPerform("performGets", ["sourceId", "name", "sourceProjectId", "sourceItemIds"]).should.deep.equal([
+                { sourceId: 1, name: "First column", sourceProjectId: 12345, sourceItemIds: [10,11,12] }
+            ]);
+        });
+
+        it("should give name to a column with empty name", function() {
+            exp.addObject(1, "Column", { name: "", pot: 12345, rank: "V" });
+            exp.prepareForImport();
+
+            exp.columns().mapPerform("performGets", ["sourceId", "name", "sourceProjectId", "sourceItemIds"]).should.deep.equal([
+                { sourceId: 1, name: "Unnamed column", sourceProjectId: 12345, sourceItemIds: [] }
+            ]);
+        });
+    });
+
+    describe("#columnsBySourceProjectId()", function() {
+        it("should return no columns", function() {
+            exp.prepareForImport();
+
+            exp.columnsBySourceProjectId().should.deep.equal({});
+        });
+
+        it("should group columns by project and be in correct order by rank", function() {
+            exp.addObject(1, "Column", { name: "First column", pot: 12345, rank: "a" });
+            exp.addObject(2, "Column", { name: "Third column", pot: 12345, rank: "c" });
+            exp.addObject(3, "Column", { name: "Second column", pot: 12345, rank: "b" });
+            exp.addObject(4, "Column", { name: "Other project column", pot: 23, rank: "b" });
+            exp.prepareForImport();
+
+            var columnsBySourceProjectId = exp.columnsBySourceProjectId();
+
+            Object.keys(columnsBySourceProjectId).length.should.equal(2);
+
+            columnsBySourceProjectId[12345].mapPerform("performGets", ["sourceId", "name"]).should.deep.equal([
+                { sourceId: 1, name: "First column" },
+                { sourceId: 3, name: "Second column" },
+                { sourceId: 2, name: "Third column" }
+            ]);
+
+            columnsBySourceProjectId[23].mapPerform("performGets", ["sourceId", "name"]).should.deep.equal([
+                { sourceId: 4, name: "Other project column" }
+            ]);
+        });
     });
 
     describe("#tags()", function() {
@@ -147,21 +228,30 @@ describe("AsanaExport", function() {
             exp.addObject(4, "Team", { name: "team1", team_type: "REQUEST_TO_JOIN" });
             exp.addObject(5, "ItemList", { followers_du: [], name: "project1", description: "description", is_project: true, is_archived: false, items: [7], team: 4, stories: [] });
             exp.addObject(6, "ItemList", { followers_du: [], name: "tag1", is_project: false, is_archived: false, items: [7], team: 4, stories: [] });
-            exp.addObject(7, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", rich_description: "description", assignee: 3, attachments: [], items: [8], stories: [], followers_du: [3] });
+            exp.addObject(7, "Task", { name: "task1", schedule_status: "UPCOMING", start_date: "2023-11-15 00:00:00", due_date: "2023-11-30 00:00:00", rich_description: "description", assignee: 3, attachments: [], items: [8], stories: [], followers_du: [3] });
             exp.addObject(8, "Task", { name: "subtask1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", rich_description: "description", assignee: 3, attachments: [], items: [], stories: [], followers_du: [3] });
             exp.prepareForImport();
 
-            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
-                { sourceId: 7, name: "task1",    notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [8], sourceAssigneeId: 1, sourceFollowerIds: [1] },
-                { sourceId: 8, name: "subtask1", notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [],  sourceAssigneeId: 1, sourceFollowerIds: [1] }
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "startOn", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
+                { sourceId: 7, name: "task1",    notes: "description", completed: false, startOn: "2023-11-15 00:00:00", dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [8], sourceAssigneeId: 1, sourceFollowerIds: [1] },
+                { sourceId: 8, name: "subtask1", notes: "description", completed: false, startOn: null, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [],  sourceAssigneeId: 1, sourceFollowerIds: [1] }
             ]);
         });
 
         it("should not return trashed Tasks", function() {
-            exp.addObject(1, "Task", { __trashed_at: "2023-11-30 00:00:00", name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(1, "Task", { __trashed_at: "2023-11-30 00:00:00", name: "task1", schedule_status: "UPCOMING", start_date: "2023-11-15 00:00:00", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [], followers_du: [] });
             exp.prepareForImport();
 
-            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([]);
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "startOn", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([]);
+        });
+
+        it("should fall back to description if rich_description unavailable", function() {
+            exp.addObject(1, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.prepareForImport();
+
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
+                { sourceId: 1, name: "task1", notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [], sourceAssigneeId: null, sourceFollowerIds: [] }
+            ]);
         });
 
         it("should paginate cursor correctly", function() {
@@ -184,7 +274,7 @@ describe("AsanaExport", function() {
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50)[0].stories().should.deep.equal([
-                { text: "MY COMMENT", creator: 3 }
+                { text: "MY COMMENT", creator: 1 }
             ]);
         });
 
@@ -194,6 +284,18 @@ describe("AsanaExport", function() {
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50)[0].stories().should.deep.equal([
+            ]);
+        });
+
+        it("should return tasks with a dependency", function() {
+            exp.addObject(1, "Task", { name: "precedent", schedule_status: "UPCOMING", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(2, "Task", { name: "dependent", schedule_status: "UPCOMING", description: "", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(3, "TaskDependency", { precedent:1, dependent:2 });
+            exp.prepareForImport();
+
+            exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "sourceBlockingTaskIds"]).should.deep.equal([
+                { sourceId: 1, sourceBlockingTaskIds: [] },
+                { sourceId: 2, sourceBlockingTaskIds: [1] }
             ]);
         });
     });

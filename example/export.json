@@ -159,3 +159,4 @@
 {"__object_id":20181476509144,"__type":"Team","__creation_time":"2014-11-14 05:49:01","name":"Team 1","team_type":"REQUEST_TO_JOIN"}
 {"__object_id":20181697220677,"__type":"Team","__creation_time":"2014-11-14 07:12:26","name":"Team 2","team_type":"PUBLIC"}
 {"__object_id":20181697220688,"__type":"Team","__creation_time":"2014-11-14 08:12:26","name":"Team 3","team_type":"SECRET"}
+{"__object_id":20451405217020,"__type":"Task","__creation_time":"2014-11-18 02:01:35","creator_du":20181476509145,"start_date":"2014-11-10 00:00:00","due_date":"2014-11-12 00:00:00","followers_du":[20181476509145],"name":"15 Task with start date","domain":20181476509143,"recurrence_type":"NEVER","description":"","attachments":[],"items":[],"force_public_to_workspace":false,"num_hearts":0,"stories":[]}

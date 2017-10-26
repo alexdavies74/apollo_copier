@@ -28,6 +28,8 @@ describe("Importer", function() {
         sinon.spy(client.tasks, "update");
         sinon.spy(client.stories, "createOnTask");
         sinon.spy(client.workspaces, "addUser");
+
+        sinon.spy(client.dispatcher, "post");
     });
     
     afterEach(function() {
@@ -86,7 +88,75 @@ describe("Importer", function() {
 
             client.projects.create.should.have.been.calledOnce;
             client.tags.create.should.not.have.been.called;
-            client.projects.create.getCall(0).args[0]['team'].should.equal(app.sourceToAsanaMap().at(100))
+            var resourceData = client.projects.create.getCall(0).args[0];
+            resourceData['team'].should.equal(app.sourceToAsanaMap().at(100));
+
+            // Since we didn't specify that it was a board, it should have list layout
+            resourceData['layout'].should.equal("LIST");
+        });
+
+        it("should create a board", function() {
+            exp.setMockData({
+                teams: [{ sourceId: 100, name: "team1", teamType: "PUBLIC", sourceMemberIds: [] }],
+                projects: [{ sourceId: 101, name: "project1", sourceTeamId: 100, sourceMemberIds: [], isBoard: true }]
+            });
+
+            importer._importTeams();
+            importer._importProjects();
+
+            client.projects.create.should.have.been.calledOnce;
+            client.projects.create.getCall(0).args[0]['layout'].should.equal("BOARD");
+        });
+    });
+
+    describe("#_importColumns()", function() {
+        it("should create a column", function() {
+            exp.setMockData({
+                projects: [{sourceId: 101, name: "project1", sourceTeamId: 100, sourceMemberIds: [], isBoard: true}],
+                columns: [{sourceId: 102, name: "column1", sourceProjectId: 101, sourceItemIds: []}]
+            });
+
+            importer._importColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            client.dispatcher.post.should.have.been.calledOnce;
+            client.dispatcher.post.should.have.been.calledWithExactly("/columns", {
+                name: "column1",
+                project: app.sourceToAsanaMap().at(101)
+            });
+        });
+    });
+
+    describe("#_addTasksToColumns()", function() {
+        it("should put some tasks in a column", function() {
+            exp.setMockData({
+                projects: [{sourceId: 103, name: "project1", sourceTeamId: 100, sourceMemberIds: [], isBoard: true}],
+                tasks: [
+                    { sourceId: 100, name: "task1", sourceFollowerIds: [], sourceItemIds: [] },
+                    { sourceId: 101, name: "task2", sourceFollowerIds: [], sourceItemIds: [] }
+                ],
+                columns: [{sourceId: 102, name: "column1", sourceProjectId: 103, sourceItemIds: [100, 101]}]
+            });
+
+            importer._importTasks();
+            importer._importColumns();
+            importer._addTasksToColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            // The first two calls to dispatcher.post will be to create the tasks, then one for the column.
+            // Calls 3 and 4 should be adding to columns, in reverse order
+            client.dispatcher.post.should.have.callCount(5);
+            app.sourceToAsanaMap().at(102).should.not.be.null;
+            client.dispatcher.post.getCall(3).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(102) + "/addTask",
+                { task: app.sourceToAsanaMap().at(101) }
+            ]);
+            client.dispatcher.post.getCall(4).args.should.deep.equal([
+                "/columns/" + app.sourceToAsanaMap().at(102) + "/addTask",
+                { task: app.sourceToAsanaMap().at(100) }
+            ]);
         });
     });
 
@@ -200,6 +270,26 @@ describe("Importer", function() {
             // reversed to get correct order
             client.tasks.setParent.getCall(1).args.should.deep.equal([app.sourceToAsanaMap().at(201), { parent: app.sourceToAsanaMap().at(100) }])
             client.tasks.setParent.getCall(0).args.should.deep.equal([app.sourceToAsanaMap().at(200), { parent: app.sourceToAsanaMap().at(100) }])
+        });
+    });
+
+    describe("#_addDependenciesToTasks", function() {
+        it("should add dependencies", function() {
+            exp.setMockData({
+                tasks: [
+                    { sourceId: 100, name: "task1", sourceBlockingTaskIds: [] },
+                    { sourceId: 200, name: "task2", sourceBlockingTaskIds: [100] }
+                ]
+            });
+
+            importer._importTasks();
+            importer._addDependenciesToTasks();
+
+            client.tasks.update.should.have.been.calledOnce;
+
+            client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(200), {
+                tasks_blocking_this: [app.sourceToAsanaMap().at(100)]
+            });
         });
     });
 
