@@ -295,6 +295,42 @@ describe("Integration", function() {
                 is_important: true
             });
         });
+
+        it("should skip custom field settings for trashed protos", function() {
+            client.projects.create = sinon.spy(createMock);
+            client.projects.addCustomFieldSetting = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", __trashed_at: "2023-11-30 00:00:00"});
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(102, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(103, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
+            exp.addObject(104, "CustomPropertyProjectSetting", { project: 103, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(105, "CustomPropertyProjectSetting", { project: 103, proto: 101, is_important: true, rank: "A" });
+            exp.prepareForImport();
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    { sourceCustomFieldProtoId: 101, isImportant: true },
+                    // We expect the setting to still exist here, it's filtered at a later stage (for perf)
+                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+
+            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.projects.addCustomFieldSetting).to.have.callCount(1);
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(101),
+                is_important: true
+            });
+        });
     });
 
     describe("#_importColumns()", function() {
@@ -625,6 +661,7 @@ describe("Integration", function() {
             exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
             exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(105, "CustomPropertyTextProto", { name: "Teddy", description: "A trashed text field", __trashed_at: "2023-11-30 00:00:00" });
             exp.addObject(150, "Team", { name: "team1", team_type: "PUBLIC" });
             exp.addObject(200, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 150, items: [301, 300], followers_du: [], assignee: null });
             exp.addObject(104, "CustomPropertyProjectSetting", { project: 200, proto: 100, is_important: true, rank: "B" });
@@ -634,6 +671,7 @@ describe("Integration", function() {
             exp.addObject(400, "CustomPropertyTextValue", { object: 300, proto: 100, text: "Yo"});
             exp.addObject(401, "CustomPropertyNumberValue", { object: 301, proto: 101, digits: "3.142"});
             exp.addObject(402, "CustomPropertyEnumValue", { object: 301, proto: 102, option: 104});
+            exp.addObject(403, "CustomPropertyTextValue", { object: 300, proto: 105, text: "Garbage"});
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
@@ -643,6 +681,12 @@ describe("Integration", function() {
                             protoSourceId: 100,
                             type: "text",
                             value: "Yo"
+                        },
+                        // This is for a trashed proto, and will be filtered out later
+                        {
+                            protoSourceId: 105,
+                            type: "text",
+                            value: "Garbage"
                         }
                     ]  },
                 { sourceId: 301, name: "task2", notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: ["created task.\nThu Jan 01 1970"], recurrenceData: null, recurrenceType: null,
