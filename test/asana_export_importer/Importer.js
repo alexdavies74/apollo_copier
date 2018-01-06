@@ -122,6 +122,7 @@ describe("Importer", function() {
             // used directly
             client.dispatcher.post.should.have.been.calledOnce;
             client.dispatcher.post.should.have.been.calledWithExactly("/columns", {
+                _sourceId: 102,
                 name: "column1",
                 project: app.sourceToAsanaMap().at(101)
             });
@@ -169,7 +170,7 @@ describe("Importer", function() {
             importer._importTags();
 
             client.tags.createInWorkspace.should.have.been.calledOnce;
-            client.tags.createInWorkspace.should.have.been.calledWithExactly(importer.organizationId(), { name: "tag1", team: null });
+            client.tags.createInWorkspace.should.have.been.calledWithExactly(importer.organizationId(), { _sourceId: 100, name: "tag1", team: null });
         });
 
         it("should create a tag with name and team", function() {
@@ -183,6 +184,7 @@ describe("Importer", function() {
 
             client.tags.createInWorkspace.should.have.been.calledOnce;
             client.tags.createInWorkspace.should.have.been.calledWithExactly(importer.organizationId(), {
+                _sourceId: 100,
                 name: "tag1",
                 team: app.sourceToAsanaMap().at(200)
             });
@@ -343,6 +345,7 @@ describe("Importer", function() {
 
             client.workspaces.addUser.should.have.been.calledOnce;
             client.workspaces.addUser.should.have.been.calledWithExactly(importer.organizationId(), {
+                _sourceId: 100,
                 user: "mike@example.com",
                 silent: true
             });

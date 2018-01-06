@@ -93,9 +93,6 @@ describe("asana_export_importer", function() {
             expect(app.attachmentsPath()).to.equal("db1/attachments1.json");
             expect(app.sourceToAsanaMap().dbPath()).to.equal("db1/mapping.sqlite");
 
-            expect(app.clientCache()).to.equal(null);
-            expect(app.clientRetry()).to.equal(null);
-
             expect(app.importer().concurrency()).to.equal(5555);
             expect(app.importer().export().batchSize()).to.equal(6666);
         });
