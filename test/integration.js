@@ -277,8 +277,8 @@ describe("Integration", function() {
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true },
-                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
                 ] }
             ]);
 
@@ -292,11 +292,13 @@ describe("Integration", function() {
             expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
             expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
                 custom_field: app.sourceToAsanaMap().at(101),
-                is_important: true
+                is_important: true,
+                _sourceId: 105
             });
             expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
                 custom_field: app.sourceToAsanaMap().at(100),
-                is_important: true
+                is_important: true,
+                _sourceId: 104
             });
         });
 
@@ -316,9 +318,9 @@ describe("Integration", function() {
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true },
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
                     // We expect the setting to still exist here, it's filtered at a later stage (for perf)
-                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
                 ] }
             ]);
 
@@ -332,7 +334,8 @@ describe("Integration", function() {
             expect(client.projects.addCustomFieldSetting).to.have.callCount(1);
             expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
                 custom_field: app.sourceToAsanaMap().at(101),
-                is_important: true
+                is_important: true,
+                _sourceId: 105
             });
         });
     });
@@ -711,8 +714,8 @@ describe("Integration", function() {
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 150, sourceItemIds: [301, 300], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true },
-                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
                 ] }
             ]);
 
