@@ -658,7 +658,8 @@ describe("Integration", function() {
                     id: asanaIdCounter++,
                     enum_options: [
                         { id: 1201 },
-                        { id: 1202 }
+                        { id: 1202 },
+                        { id: 1203 }
                     ]
                 });
             });
@@ -667,19 +668,21 @@ describe("Integration", function() {
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
             exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
             exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
-            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
-            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(110, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(111, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(112, "CustomPropertyEnumOption", { name: "Archived Pill", proto: 102, is_archived: true, color: "green", rank: "D" });
             exp.addObject(105, "CustomPropertyTextProto", { name: "Teddy", description: "A trashed text field", __trashed_at: "2023-11-30 00:00:00" });
             exp.addObject(150, "Team", { name: "team1", team_type: "PUBLIC" });
             exp.addObject(200, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 150, items: [301, 300], followers_du: [], assignee: null });
-            exp.addObject(104, "CustomPropertyProjectSetting", { project: 200, proto: 100, is_important: true, rank: "B" });
-            exp.addObject(105, "CustomPropertyProjectSetting", { project: 200, proto: 101, is_important: true, rank: "A" });
+            exp.addObject(130, "CustomPropertyProjectSetting", { project: 200, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(131, "CustomPropertyProjectSetting", { project: 200, proto: 101, is_important: true, rank: "A" });
             exp.addObject(300, "Task", { name: "task1", description: null, items: [], attachments: [], followers_du: [], stories: [] });
             exp.addObject(301, "Task", { name: "task2", description: null, items: [], attachments: [], followers_du: [], stories: [] });
             exp.addObject(400, "CustomPropertyTextValue", { object: 300, proto: 100, text: "Yo"});
             exp.addObject(401, "CustomPropertyNumberValue", { object: 301, proto: 101, digits: "3.142"});
-            exp.addObject(402, "CustomPropertyEnumValue", { object: 301, proto: 102, option: 104});
-            exp.addObject(403, "CustomPropertyTextValue", { object: 300, proto: 105, text: "Garbage"});
+            exp.addObject(402, "CustomPropertyEnumValue", { object: 301, proto: 102, option: 111});
+            exp.addObject(403, "CustomPropertyEnumValue", { object: 300, proto: 102, option: 112});
+            exp.addObject(404, "CustomPropertyTextValue", { object: 300, proto: 105, text: "Garbage"});
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
@@ -707,15 +710,15 @@ describe("Integration", function() {
                         {
                             protoSourceId: 102,
                             type: "enum",
-                            value: 104
+                            value: 111
                         }
                     ]  }
             ]);
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 150, sourceItemIds: [301, 300], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
-                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 131 },
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 130 }
                 ] }
             ]);
 
@@ -741,7 +744,7 @@ describe("Integration", function() {
 
             var task2CustomFields = {};
             task2CustomFields[app.sourceToAsanaMap().at(101)] = "3.142";
-            task2CustomFields[app.sourceToAsanaMap().at(102)] = app.sourceToAsanaMap().at(104);
+            task2CustomFields[app.sourceToAsanaMap().at(102)] = app.sourceToAsanaMap().at(111);
             client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(301), {
                 custom_fields: task2CustomFields,
                 force_write_custom_fields: true
