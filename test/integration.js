@@ -67,13 +67,13 @@ describe("Integration", function() {
         it("should create text and number field protos", function() {
             client.dispatcher.post = sinon.spy(createMock);
 
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
-            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3, creation_source: "web" });
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "Teddy", description: "A text field", type: "text" },
-                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3 }
+                { sourceId: 100, name: "Teddy", description: "A text field", type: "text", creationSource: "web" },
+                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3, creationSource: "web" }
             ]);
 
             importer._importCustomFieldProtos();
@@ -112,13 +112,13 @@ describe("Integration", function() {
                 });
             });
 
-            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web" });
             exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", options: [
+                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", creationSource: "web", options: [
                     { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
                     { sourceId: 103, name: "Red Pill", enabled: true, color: "red" }
                 ] }
@@ -158,7 +158,7 @@ describe("Integration", function() {
                 }
             });
 
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
             exp.prepareForImport();
 
             importer._importCustomFieldProtos();
@@ -176,9 +176,9 @@ describe("Integration", function() {
                 workspace: orgId
             });
 
-            // Second attempt with name like "Teddy (Imported 12345)"
+            // Second attempt with name like "Teddy (Imported 12345 web)"
             expect(client.dispatcher.post).to.have.been.calledWithMatch("/custom_fields", {
-                name: sinon.match(/Teddy \(Imported .*\)/),
+                name: sinon.match(/Teddy \(Imported .* web\)/),
                 description: "A text field",
                 type: "text",
                 workspace: orgId
