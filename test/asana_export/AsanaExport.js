@@ -139,26 +139,30 @@ describe("AsanaExport", function() {
         });
 
         it("should return a column containing some tasks", function() {
-            exp.addObject(1, "Column", { name: "First column", pot: 12345, rank: "V" });
-            exp.addObject(2, "ColumnTask", { column: 1, pot: 12345, task: 10, rank: "a" });
-            exp.addObject(3, "ColumnTask", { column: 1, pot: 12345, task: 12, rank: "c" });
-            exp.addObject(4, "ColumnTask", { column: 1, pot: 12345, task: 11, rank: "b" });
+            exp.addObject(20, "Team", { name: "team1", team_type: "REQUEST_TO_JOIN" });
+            exp.addObject(21, "ItemList", { followers_du: [], name: "project1", description: "description", is_project: true, is_archived: false, items: [10,11,12], team: 20, stories: [] });
+            exp.addObject(1, "Column", { name: "First column", pot: 21, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 21, task: 10, rank: "a" });
+            exp.addObject(3, "ColumnTask", { column: 1, pot: 21, task: 12, rank: "c" });
+            exp.addObject(4, "ColumnTask", { column: 1, pot: 21, task: 11, rank: "b" });
             exp.addObject(10, "Task", { });
             exp.addObject(11, "Task", { });
             exp.addObject(12, "Task", { });
             exp.prepareForImport();
 
             exp.columns().mapPerform("performGets", ["sourceId", "name", "sourceProjectId", "sourceItemIds"]).should.deep.equal([
-                { sourceId: 1, name: "First column", sourceProjectId: 12345, sourceItemIds: [10,11,12] }
+                { sourceId: 1, name: "First column", sourceProjectId: 21, sourceItemIds: [10,11,12] }
             ]);
         });
 
         it("should give name to a column with empty name", function() {
-            exp.addObject(1, "Column", { name: "", pot: 12345, rank: "V" });
+            exp.addObject(20, "Team", { name: "team1", team_type: "REQUEST_TO_JOIN" });
+            exp.addObject(21, "ItemList", { followers_du: [], name: "project1", description: "description", is_project: true, is_archived: false, items: [10,11,12], team: 20, stories: [] });
+            exp.addObject(1, "Column", { name: "", pot: 21, rank: "V" });
             exp.prepareForImport();
 
             exp.columns().mapPerform("performGets", ["sourceId", "name", "sourceProjectId", "sourceItemIds"]).should.deep.equal([
-                { sourceId: 1, name: "Unnamed column", sourceProjectId: 12345, sourceItemIds: [] }
+                { sourceId: 1, name: "Unnamed column", sourceProjectId: 21, sourceItemIds: [] }
             ]);
         });
     });
@@ -171,9 +175,12 @@ describe("AsanaExport", function() {
         });
 
         it("should group columns by project and be in correct order by rank", function() {
-            exp.addObject(1, "Column", { name: "First column", pot: 12345, rank: "a" });
-            exp.addObject(2, "Column", { name: "Third column", pot: 12345, rank: "c" });
-            exp.addObject(3, "Column", { name: "Second column", pot: 12345, rank: "b" });
+            exp.addObject(20, "Team", { name: "team1", team_type: "REQUEST_TO_JOIN" });
+            exp.addObject(21, "ItemList", { followers_du: [], name: "project1", description: "description", is_project: true, is_archived: false, items: [10,11,12], team: 20, stories: [] });
+            exp.addObject(23, "ItemList", { followers_du: [], name: "project1", description: "description", is_project: true, is_archived: false, items: [10,11,12], team: 20, stories: [] });
+            exp.addObject(1, "Column", { name: "First column", pot: 21, rank: "a" });
+            exp.addObject(2, "Column", { name: "Third column", pot: 21, rank: "c" });
+            exp.addObject(3, "Column", { name: "Second column", pot: 21, rank: "b" });
             exp.addObject(4, "Column", { name: "Other project column", pot: 23, rank: "b" });
             exp.prepareForImport();
 
@@ -181,7 +188,7 @@ describe("AsanaExport", function() {
 
             Object.keys(columnsBySourceProjectId).length.should.equal(2);
 
-            columnsBySourceProjectId[12345].mapPerform("performGets", ["sourceId", "name"]).should.deep.equal([
+            columnsBySourceProjectId[21].mapPerform("performGets", ["sourceId", "name"]).should.deep.equal([
                 { sourceId: 1, name: "First column" },
                 { sourceId: 3, name: "Second column" },
                 { sourceId: 2, name: "Third column" }

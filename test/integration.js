@@ -828,6 +828,28 @@ describe("Integration", function() {
                 { task: app.sourceToAsanaMap().at(10) }
             ]);
         });
+
+        it("should skip adding tasks to columns in trashed projects", function() {
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], assignee: null, followers_du: [], __trashed_at: "2023-11-30 00:00:00" });
+            exp.addObject(1, "Column", { name: "column1", pot: 101, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 101, task: 10, rank: "a" });
+            exp.addObject(10, "Task", { followers_du: [], stories: [] });
+            exp.prepareForImport();
+
+            // It should be skipped at the very beginning, by AsanaExport
+            expect(exp.columns().mapPerform("toJS")).to.deep.equal([ ]);
+
+            importer._importTasks();
+            importer._importColumns();
+            importer._addTasksToColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            // There should be no call to create the column
+            // Then, there should be no call to put the task in it (this is where there was a bug)
+            expect(client.dispatcher.post).to.have.callCount(0);
+        });
     });
 
     describe("#_importUsers", function() {
