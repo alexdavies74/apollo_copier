@@ -126,7 +126,7 @@ exports.initApp = function(options) {
 
 			if (options.retries > 0) {
 				var clientRetry = aei.AsanaClientRetry.clone();
-                clientRetry.setClient(apiClient);
+				clientRetry.setClient(apiClient);
 				clientRetry.setRetries(options.retries);
 				clientRetry.setBackoff(options.retryBackoff);
 				clientRetry.setDelay(options.retryDelay);

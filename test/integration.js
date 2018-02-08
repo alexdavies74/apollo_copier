@@ -61,9 +61,9 @@ describe("Integration", function() {
             importer._importTeams();
 
             expect(client.teams.create).to.have.callCount(3);
-            expect(client.teams.create).to.have.been.calledWithExactly({ organization: orgId, name: "team1", type: "PUBLIC" });
-            expect(client.teams.create).to.have.been.calledWithExactly({ organization: orgId, name: "team2", type: "REQUEST_TO_JOIN" });
-            expect(client.teams.create).to.have.been.calledWithExactly({ organization: orgId, name: "team3", type: "SECRET" });
+            expect(client.teams.create).to.have.been.calledWithExactly({ _sourceId: 100, organization: orgId, name: "team1", type: "PUBLIC" });
+            expect(client.teams.create).to.have.been.calledWithExactly({ _sourceId: 101, organization: orgId, name: "team2", type: "REQUEST_TO_JOIN" });
+            expect(client.teams.create).to.have.been.calledWithExactly({ _sourceId: 102, organization: orgId, name: "team3", type: "SECRET" });
         });
     });
 
@@ -71,13 +71,13 @@ describe("Integration", function() {
         it("should create text and number field protos", function() {
             client.dispatcher.post = sinon.spy(createMock);
 
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
-            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3, creation_source: "web" });
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "Teddy", description: "A text field", type: "text" },
-                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3 }
+                { sourceId: 100, name: "Teddy", description: "A text field", type: "text", creationSource: "web" },
+                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3, creationSource: "web" }
             ]);
 
             importer._importCustomFieldProtos();
@@ -86,12 +86,14 @@ describe("Integration", function() {
             // used directly
             expect(client.dispatcher.post).to.have.callCount(2);
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                _sourceId: 100,
                 name: "Teddy",
                 description: "A text field",
                 type: "text",
                 workspace: orgId
             });
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                _sourceId: 101,
                 name: "Noddy",
                 description: "A number field",
                 type: "number",
@@ -114,13 +116,13 @@ describe("Integration", function() {
                 });
             });
 
-            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web" });
             exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", options: [
+                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", creationSource: "web", options: [
                     { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
                     { sourceId: 103, name: "Red Pill", enabled: true, color: "red" }
                 ] }
@@ -132,6 +134,7 @@ describe("Integration", function() {
             // used directly
             expect(client.dispatcher.post).to.have.callCount(1);
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                _sourceId: 102,
                 name: "Eddy",
                 description: "A enum field",
                 type: "enum",
@@ -159,7 +162,7 @@ describe("Integration", function() {
                 }
             });
 
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
             exp.prepareForImport();
 
             importer._importCustomFieldProtos();
@@ -170,15 +173,16 @@ describe("Integration", function() {
 
             // First attempt with name "Teddy"
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
+                _sourceId: 100,
                 name: "Teddy",
                 description: "A text field",
                 type: "text",
                 workspace: orgId
             });
 
-            // Second attempt with name like "Teddy (Imported 12345)"
+            // Second attempt with name like "Teddy (Imported 12345 web)"
             expect(client.dispatcher.post).to.have.been.calledWithMatch("/custom_fields", {
-                name: sinon.match(/Teddy \(Imported .*\)/),
+                name: sinon.match(/Teddy \(Imported .* web\)/),
                 description: "A text field",
                 type: "text",
                 workspace: orgId
@@ -218,7 +222,7 @@ describe("Integration", function() {
 
             expect(client.teams.create).to.have.callCount(1);
             expect(client.projects.create).to.have.callCount(1);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ _sourceId: 200, workspace: orgId, name: "project1", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should create projects with correct 'public' fields (and defaults to false)", function() {
@@ -238,9 +242,9 @@ describe("Integration", function() {
             importer._importProjects();
 
             expect(client.projects.create).to.have.callCount(3);
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
-            expect(client.projects.create).to.have.been.calledWithExactly({ workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ _sourceId: 200, workspace: orgId, name: "project1", notes: "desc", archived: false, public: true, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ _sourceId: 201, workspace: orgId, name: "project2", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
+            expect(client.projects.create).to.have.been.calledWithExactly({ _sourceId: 202, workspace: orgId, name: "project3", notes: "desc", archived: false, public: false, color: null, layout: "LIST", team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should not create projects for tags or ATMs", function() {
@@ -277,8 +281,8 @@ describe("Integration", function() {
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 103, name: "project1", creator: 1234, notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true },
-                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
                 ] }
             ]);
 
@@ -292,11 +296,50 @@ describe("Integration", function() {
             expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
             expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
                 custom_field: app.sourceToAsanaMap().at(101),
-                is_important: true
+                is_important: true,
+                _sourceId: 105
             });
             expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
                 custom_field: app.sourceToAsanaMap().at(100),
-                is_important: true
+                is_important: true,
+                _sourceId: 104
+            });
+        });
+
+        it("should skip custom field settings for trashed protos", function() {
+            client.projects.create = sinon.spy(createMock);
+            client.projects.addCustomFieldSetting = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+            client.dispatcher.post = sinon.spy(createMock);
+
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", __trashed_at: "2023-11-30 00:00:00"});
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(102, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(103, "ItemList", { name: "project1", creator_du: 1235, description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
+            exp.addObject(104, "CustomPropertyProjectSetting", { project: 103, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(105, "CustomPropertyProjectSetting", { project: 103, proto: 101, is_important: true, rank: "A" });
+            exp.prepareForImport();
+
+            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+                { sourceId: 103, name: "project1", creator: 1234, notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
+                    // We expect the setting to still exist here, it's filtered at a later stage (for perf)
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+
+            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
+            // used directly
+            expect(client.projects.addCustomFieldSetting).to.have.callCount(1);
+            expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
+                custom_field: app.sourceToAsanaMap().at(101),
+                is_important: true,
+                _sourceId: 105
             });
         });
     });
@@ -324,6 +367,7 @@ describe("Integration", function() {
             // used directly
             expect(client.dispatcher.post).to.have.been.calledOnce;
             expect(client.dispatcher.post).to.have.been.calledWithExactly("/columns", {
+                _sourceId: 1,
                 name: "column1",
                 project: app.sourceToAsanaMap().at(101)
             });
@@ -352,8 +396,8 @@ describe("Integration", function() {
             expect(client.teams.create).to.have.callCount(1);
             expect(client.tags.createInWorkspace).to.have.callCount(2);
             expect(client.workspaces.tags).to.have.callCount(1);
-            expect(client.tags.createInWorkspace).to.have.been.calledWithExactly(orgId, { name: "tag1", team: null });
-            expect(client.tags.createInWorkspace).to.have.been.calledWithExactly(orgId, { name: "tag2", team: app.sourceToAsanaMap().at(100) });
+            expect(client.tags.createInWorkspace).to.have.been.calledWithExactly(orgId, { _sourceId: 200, name: "tag1", team: null });
+            expect(client.tags.createInWorkspace).to.have.been.calledWithExactly(orgId, { _sourceId: 201, name: "tag2", team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should not create duplicate tags", function() {
@@ -395,8 +439,8 @@ describe("Integration", function() {
             importer._importTasks();
 
             expect(client.tasks.create).to.have.callCount(2);
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, force_public: false, hearted: false, recurrence: { type: null, data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task2", html_notes: "desc", completed: true, start_on: "2023-11-15 00:00:00", due_on: "2023-11-30 00:00:00", force_public: false, hearted: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, force_public: false, hearted: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "desc", completed: true, start_on: "2023-11-15 00:00:00", due_on: "2023-11-30 00:00:00", force_public: false, hearted: false, recurrence: { type: null, data: null } });
         });
 
         it("should not create trashed tasks", function() {
@@ -425,9 +469,9 @@ describe("Integration", function() {
             importer._importTasks();
 
             expect(client.tasks.create).to.have.callCount(3);
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: true, recurrence: { type: null, data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task2", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task3", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: true, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 102, workspace: orgId, name: "task3", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
         });
 
         it("should create tasks with the correct recurrence fields", function() {
@@ -445,9 +489,9 @@ describe("Integration", function() {
             importer._importTasks();
 
             expect(client.tasks.create).to.have.callCount(3);
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "NEVER", data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task2", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "PERIODICALLY", data: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}" } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ workspace: orgId, name: "task3", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "WEEKLY", data: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}" } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "PERIODICALLY", data: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}" } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 102, workspace: orgId, name: "task3", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "WEEKLY", data: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}" } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "NEVER", data: null } });
         });
     });
 
@@ -616,7 +660,8 @@ describe("Integration", function() {
                     id: asanaIdCounter++,
                     enum_options: [
                         { id: 1201 },
-                        { id: 1202 }
+                        { id: 1202 },
+                        { id: 1203 }
                     ]
                 });
             });
@@ -625,17 +670,21 @@ describe("Integration", function() {
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
             exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
             exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
-            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
-            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(110, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(111, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(112, "CustomPropertyEnumOption", { name: "Archived Pill", proto: 102, is_archived: true, color: "green", rank: "D" });
+            exp.addObject(105, "CustomPropertyTextProto", { name: "Teddy", description: "A trashed text field", __trashed_at: "2023-11-30 00:00:00" });
             exp.addObject(150, "Team", { name: "team1", team_type: "PUBLIC" });
             exp.addObject(200, "ItemList", { name: "project1", creator_du: 1235, description: "desc", is_project: true, is_archived: false, team: 150, items: [301, 300], followers_du: [], assignee: null });
-            exp.addObject(104, "CustomPropertyProjectSetting", { project: 200, proto: 100, is_important: true, rank: "B" });
-            exp.addObject(105, "CustomPropertyProjectSetting", { project: 200, proto: 101, is_important: true, rank: "A" });
+            exp.addObject(130, "CustomPropertyProjectSetting", { project: 200, proto: 100, is_important: true, rank: "B" });
+            exp.addObject(131, "CustomPropertyProjectSetting", { project: 200, proto: 101, is_important: true, rank: "A" });
             exp.addObject(300, "Task", { name: "task1", creator_du: 1235, description: null, items: [], attachments: [], followers_du: [], stories: [] });
             exp.addObject(301, "Task", { name: "task2", creator_du: 1235, description: null, items: [], attachments: [], followers_du: [], stories: [] });
             exp.addObject(400, "CustomPropertyTextValue", { object: 300, proto: 100, text: "Yo"});
             exp.addObject(401, "CustomPropertyNumberValue", { object: 301, proto: 101, digits: "3.142"});
-            exp.addObject(402, "CustomPropertyEnumValue", { object: 301, proto: 102, option: 104});
+            exp.addObject(402, "CustomPropertyEnumValue", { object: 301, proto: 102, option: 111});
+            exp.addObject(403, "CustomPropertyEnumValue", { object: 300, proto: 102, option: 112});
+            exp.addObject(404, "CustomPropertyTextValue", { object: 300, proto: 105, text: "Garbage"});
             exp.prepareForImport();
 
             expect(exp.taskDataSource()(0,50).mapPerform("toJS")).to.deep.equal([
@@ -645,6 +694,12 @@ describe("Integration", function() {
                             protoSourceId: 100,
                             type: "text",
                             value: "Yo"
+                        },
+                        // This is for a trashed proto, and will be filtered out later
+                        {
+                            protoSourceId: 105,
+                            type: "text",
+                            value: "Garbage"
                         }
                     ]  },
                 { sourceId: 301, name: "task2", creator: 1234, notes: "", completed: false, startOn: null, dueOn: null, public: false, assigneeStatus: null, sourceAssigneeId: null, sourceItemIds: [], sourceFollowerIds: [], sourceBlockingTaskIds: [], stories: [], recurrenceData: null, recurrenceType: null,
@@ -657,15 +712,15 @@ describe("Integration", function() {
                         {
                             protoSourceId: 102,
                             type: "enum",
-                            value: 104
+                            value: 111
                         }
                     ]  }
             ]);
 
             expect(exp.projects().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 200, name: "project1", creator: 1234, notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 150, sourceItemIds: [301, 300], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true },
-                    { sourceCustomFieldProtoId: 100, isImportant: true }
+                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 131 },
+                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 130 }
                 ] }
             ]);
 
@@ -691,7 +746,7 @@ describe("Integration", function() {
 
             var task2CustomFields = {};
             task2CustomFields[app.sourceToAsanaMap().at(101)] = "3.142";
-            task2CustomFields[app.sourceToAsanaMap().at(102)] = app.sourceToAsanaMap().at(104);
+            task2CustomFields[app.sourceToAsanaMap().at(102)] = app.sourceToAsanaMap().at(111);
             client.tasks.update.should.have.been.calledWithExactly(app.sourceToAsanaMap().at(301), {
                 custom_fields: task2CustomFields,
                 force_write_custom_fields: true
@@ -775,6 +830,28 @@ describe("Integration", function() {
                 { task: app.sourceToAsanaMap().at(10) }
             ]);
         });
+
+        it("should skip adding tasks to columns in trashed projects", function() {
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], assignee: null, followers_du: [], __trashed_at: "2023-11-30 00:00:00" });
+            exp.addObject(1, "Column", { name: "column1", pot: 101, rank: "V" });
+            exp.addObject(2, "ColumnTask", { column: 1, pot: 101, task: 10, rank: "a" });
+            exp.addObject(10, "Task", { followers_du: [], stories: [] });
+            exp.prepareForImport();
+
+            // It should be skipped at the very beginning, by AsanaExport
+            expect(exp.columns().mapPerform("toJS")).to.deep.equal([ ]);
+
+            importer._importTasks();
+            importer._importColumns();
+            importer._addTasksToColumns();
+
+            // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
+            // used directly
+            // There should be no call to create the column
+            // Then, there should be no call to put the task in it (this is where there was a bug)
+            expect(client.dispatcher.post).to.have.callCount(0);
+        });
     });
 
     describe("#_importUsers", function() {
@@ -792,8 +869,8 @@ describe("Integration", function() {
             importer._importUsers();
 
             expect(client.workspaces.addUser).to.have.callCount(2);
-            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { user: "creator@example.com", silent: true });
-            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { user: "user1@example.com", silent: true });
+            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { _sourceId: 1234, user: "creator@example.com", silent: true });
+            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { _sourceId: 100, user: "user1@example.com", silent: true });
         });
 
         it("should not return deactivated Users", function() {
@@ -810,7 +887,7 @@ describe("Integration", function() {
             importer._importUsers();
 
             expect(client.workspaces.addUser).to.have.callCount(1);
-            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { user: "creator@example.com", silent: true });
+            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { _sourceId: 1234, user: "creator@example.com", silent: true });
         });
 
         it("should not return active=false DomainUsers", function() {
@@ -827,7 +904,7 @@ describe("Integration", function() {
             importer._importUsers();
 
             expect(client.workspaces.addUser).to.have.callCount(1);
-            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { user: "creator@example.com", silent: true });
+            expect(client.workspaces.addUser).to.have.been.calledWithExactly(importer.organizationId(), { _sourceId: 1234, user: "creator@example.com", silent: true });
         });
     });
 

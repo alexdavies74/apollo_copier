@@ -88,7 +88,7 @@ describe("asana_export_importer", function() {
 
             expect(app.importer().export().path()).to.equal("path");
             expect(app.importer().organizationId()).to.equal(1111);
-            expect(app.apiClient().dispatcher.authValue.user).to.equal("key");
+            expect(app.apiClient().dispatcher.authValue.bearer).to.equal("key");
             expect(aei.asana.Dispatcher.ROOT_URL).to.equal("http://example.com/");
             expect(app.attachmentsPath()).to.equal("db1/attachments1.json");
             expect(app.sourceToAsanaMap().dbPath()).to.equal("db1/mapping.sqlite");
