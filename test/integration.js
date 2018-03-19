@@ -362,7 +362,7 @@ describe("Integration", function() {
             // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
             // used directly
             expect(client.dispatcher.post).to.have.been.calledOnce;
-            expect(client.dispatcher.post).to.have.been.calledWithExactly("/columns", {
+            expect(client.dispatcher.post).to.have.been.calledWithExactly("/sections", {
                 _sourceId: 1,
                 name: "column1",
                 project: app.sourceToAsanaMap().at(101)
@@ -813,19 +813,19 @@ describe("Integration", function() {
             // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
             // used directly
             // The first call to dispatcher.post will be to create the column.
-            // Calls 1, 2 & 3 should be adding to columns, in reverse order.
+            // Calls 1, 2 & 3 should be adding to columns, in forward order.
             expect(client.dispatcher.post).to.have.callCount(4);
             client.dispatcher.post.getCall(1).args.should.deep.equal([
-                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
-                { task: app.sourceToAsanaMap().at(12) }
+                "/tasks/" + app.sourceToAsanaMap().at(10) + "/addProject",
+                { section: app.sourceToAsanaMap().at(1), project: app.sourceToAsanaMap().at(101) }
             ]);
             client.dispatcher.post.getCall(2).args.should.deep.equal([
-                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
-                { task: app.sourceToAsanaMap().at(11) }
+                "/tasks/" + app.sourceToAsanaMap().at(11) + "/addProject",
+                { section: app.sourceToAsanaMap().at(1), project: app.sourceToAsanaMap().at(101) }
             ]);
             client.dispatcher.post.getCall(3).args.should.deep.equal([
-                "/columns/" + app.sourceToAsanaMap().at(1) + "/addTask",
-                { task: app.sourceToAsanaMap().at(10) }
+                "/tasks/" + app.sourceToAsanaMap().at(12) + "/addProject",
+                { section: app.sourceToAsanaMap().at(1), project: app.sourceToAsanaMap().at(101) }
             ]);
         });
 
