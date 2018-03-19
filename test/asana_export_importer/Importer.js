@@ -121,7 +121,7 @@ describe("Importer", function() {
             // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
             // used directly
             client.dispatcher.post.should.have.been.calledOnce;
-            client.dispatcher.post.should.have.been.calledWithExactly("/columns", {
+            client.dispatcher.post.should.have.been.calledWithExactly("/sections", {
                 _sourceId: 102,
                 name: "column1",
                 project: app.sourceToAsanaMap().at(101)
@@ -147,16 +147,16 @@ describe("Importer", function() {
             // The client library doesn't support boards/columns yet, so we expect the dispatcher to have been
             // used directly
             // The first two calls to dispatcher.post will be to create the tasks, then one for the column.
-            // Calls 3 and 4 should be adding to columns, in reverse order
+            // Calls 3 and 4 should be adding to columns, in forward order
             client.dispatcher.post.should.have.callCount(5);
             app.sourceToAsanaMap().at(102).should.not.be.null;
             client.dispatcher.post.getCall(3).args.should.deep.equal([
-                "/columns/" + app.sourceToAsanaMap().at(102) + "/addTask",
-                { task: app.sourceToAsanaMap().at(101) }
+                "/tasks/" + app.sourceToAsanaMap().at(100) + "/addProject",
+                { section: app.sourceToAsanaMap().at(102), project: app.sourceToAsanaMap().at(103) }
             ]);
             client.dispatcher.post.getCall(4).args.should.deep.equal([
-                "/columns/" + app.sourceToAsanaMap().at(102) + "/addTask",
-                { task: app.sourceToAsanaMap().at(100) }
+                "/tasks/" + app.sourceToAsanaMap().at(101) + "/addProject",
+                { section: app.sourceToAsanaMap().at(102), project: app.sourceToAsanaMap().at(103) }
             ]);
         });
     });
