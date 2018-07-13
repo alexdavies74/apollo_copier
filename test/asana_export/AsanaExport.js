@@ -253,11 +253,11 @@ describe("AsanaExport", function() {
         });
 
         it("should fall back to description if rich_description unavailable", function() {
-            exp.addObject(1, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "description", attachments: [], items: [], stories: [], followers_du: [] });
+            exp.addObject(1, "Task", { name: "task1", schedule_status: "UPCOMING", due_date:"2023-11-30 00:00:00", description: "descrip>tion", attachments: [], items: [], stories: [], followers_du: [] });
             exp.prepareForImport();
 
             exp.taskDataSource()(0, 50).mapPerform("performGets", ["sourceId", "name", "notes", "completed", "assigneeStatus", "dueOn", "sourceItemIds", "sourceAssigneeId", "sourceFollowerIds"]).should.deep.equal([
-                { sourceId: 1, name: "task1", notes: "description", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [], sourceAssigneeId: null, sourceFollowerIds: [] }
+                { sourceId: 1, name: "task1", notes: "descrip&gt;tion", completed: false, dueOn: "2023-11-30 00:00:00", assigneeStatus: "upcoming", sourceItemIds: [], sourceAssigneeId: null, sourceFollowerIds: [] }
             ]);
         });
 
