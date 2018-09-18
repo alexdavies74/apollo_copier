@@ -69,7 +69,7 @@ describe("Integration", function() {
 
     describe("#_importCustomFieldProtos", function() {
         it("should create text and number field protos", function() {
-            client.dispatcher.post = sinon.spy(createMock);
+            client.dispatch = sinon.spy(createMock);
 
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
             exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3, creation_source: "web" });
@@ -84,29 +84,39 @@ describe("Integration", function() {
 
             // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
             // used directly
-            expect(client.dispatcher.post).to.have.callCount(2);
-            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
-                _sourceId: 100,
-                name: "Teddy",
-                description: "A text field",
-                type: "text",
-                workspace: orgId
-            });
-            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
-                _sourceId: 101,
-                name: "Noddy",
-                description: "A number field",
-                type: "number",
-                precision: 3,
-                workspace: orgId
-            });
+            expect(client.dispatch).to.have.callCount(2);
+            expect(client.dispatch).to.have.been.calledWithExactly({
+                    method: 'POST',
+                    url: "https://app.asana.com/api/1.0/custom_fields",
+                    json: {
+                        data: {
+                            _sourceId: 100,
+                            name: "Teddy",
+                            description: "A text field",
+                            type: "text",
+                            workspace: orgId
+                        }
+                    }});
+            expect(client.dispatch).to.have.been.calledWithExactly({
+                method: 'POST',
+                url: "https://app.asana.com/api/1.0/custom_fields",
+                json: {
+                    data: {
+                        _sourceId: 101,
+                        name: "Noddy",
+                        description: "A number field",
+                        type: "number",
+                        precision: 3,
+                        workspace: orgId
+                    }
+                }});
         });
 
         it("should create enum field protos", function() {
             // Enum options are the most complex case for what we expect in return from the API. When creating the
             // enum proto, we expect all the options to also be created and assigned IDs, which we need to read
             // from the response
-            client.dispatcher.post = sinon.spy(function() {
+            client.dispatch = sinon.spy(function() {
                 return Promise.resolve({
                     id: asanaIdCounter++,
                     enum_options: [
@@ -132,18 +142,23 @@ describe("Integration", function() {
 
             // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
             // used directly
-            expect(client.dispatcher.post).to.have.callCount(1);
-            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
-                _sourceId: 102,
-                name: "Eddy",
-                description: "A enum field",
-                type: "enum",
-                workspace: orgId,
-                enum_options: [
-                    { color: "blue", enabled: true, name: "Blue Pill", sourceId: 104 },
-                    { color: "red", enabled: true, name: "Red Pill", sourceId: 103 }
-                ]
-            });
+            expect(client.dispatch).to.have.callCount(1);
+            expect(client.dispatch).to.have.been.calledWithExactly({
+                method: 'POST',
+                url: "https://app.asana.com/api/1.0/custom_fields",
+                json: {
+                    data: {
+                        _sourceId: 102,
+                        name: "Eddy",
+                        description: "A enum field",
+                        type: "enum",
+                        workspace: orgId,
+                        enum_options: [
+                            { color: "blue", enabled: true, name: "Blue Pill", sourceId: 104 },
+                            { color: "red", enabled: true, name: "Red Pill", sourceId: 103 }
+                        ]
+                    }
+                }});
 
             // Check that we parsed the IDs of the newly created enum options correctly, and stored them for setting values later
             expect(app.sourceToAsanaMap().at(104)).to.equal(201);
@@ -153,7 +168,8 @@ describe("Integration", function() {
         it("should try again if proto name is already used", function() {
             // We don't parse the error message, we just assume all errors are caused by name conflicts
             var attempt = 0;
-            client.dispatcher.post = sinon.spy(function() {
+            client.dispatch = sinon.spy(function(params) {
+                console.log(params)
                 attempt++;
                 if (attempt === 1) {
                     return Promise.reject("Error message about proto name being already used");
@@ -169,24 +185,36 @@ describe("Integration", function() {
 
             // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
             // used directly
-            expect(client.dispatcher.post).to.have.callCount(2);
+            expect(client.dispatch).to.have.callCount(2);
 
             // First attempt with name "Teddy"
-            expect(client.dispatcher.post).to.have.been.calledWithExactly("/custom_fields", {
-                _sourceId: 100,
-                name: "Teddy",
-                description: "A text field",
-                type: "text",
-                workspace: orgId
-            });
+            expect(client.dispatch).to.have.been.calledWithExactly({
+                method: 'POST',
+                url: "https://app.asana.com/api/1.0/custom_fields",
+                json: {
+                    data: {
+                        _sourceId: 100,
+                        name: "Teddy",
+                        description: "A text field",
+                        type: "text",
+                        workspace: orgId
+                    }
+                }});
 
             // Second attempt with name like "Teddy (Imported 12345 web)"
-            expect(client.dispatcher.post).to.have.been.calledWithMatch("/custom_fields", {
-                name: sinon.match(/Teddy \(Imported .* web\)/),
-                description: "A text field",
-                type: "text",
-                workspace: orgId
-            });
+            expect(client.dispatch).to.have.been.calledWithExactly({
+                method: 'POST',
+                url: "https://app.asana.com/api/1.0/custom_fields",
+                json: {
+                    data: {
+                        name: sinon.match(/Teddy \(Imported .* web\)/),
+                        description: "A text field",
+                        type: "text",
+                        workspace: orgId,
+                        precision: undefined,
+                        enum_options: undefined
+                    }
+                }});
         });
     });
 
@@ -269,7 +297,7 @@ describe("Integration", function() {
             client.projects.create = sinon.spy(createMock);
             client.projects.addCustomFieldSetting = sinon.spy(createMock);
             client.teams.create = sinon.spy(createMock);
-            client.dispatcher.post = sinon.spy(createMock);
+            client.dispatch = sinon.spy(createMock);
 
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
             exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
@@ -310,7 +338,7 @@ describe("Integration", function() {
             client.projects.create = sinon.spy(createMock);
             client.projects.addCustomFieldSetting = sinon.spy(createMock);
             client.teams.create = sinon.spy(createMock);
-            client.dispatcher.post = sinon.spy(createMock);
+            client.dispatch = sinon.spy(createMock);
 
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", __trashed_at: "2023-11-30 00:00:00"});
             exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
@@ -655,7 +683,7 @@ describe("Integration", function() {
             client.tasks.update = sinon.spy(emptyMock);
 
             // Not every usage of dispatcher.post is to create an enum custom field, but the rest ignore this response
-            client.dispatcher.post = sinon.spy(function() {
+            client.dispatch = sinon.spy(function() {
                 return Promise.resolve({
                     id: asanaIdCounter++,
                     enum_options: [
