@@ -20,7 +20,7 @@ describe("asana_export_importer", function() {
             expect(options.module).to.equal("asana_export");
             expect(options.organization).to.equal(0);
             expect(options.pats[0]).to.equal("key");
-            expect(options.apiEndpoint).to.equal(aei.asana.Dispatcher.ROOT_URL);
+            expect(options.asanaBaseUrl).to.equal("https://app.asana.com/");
             expect(options.attachmentsPath).to.equal("attachments.json");
             expect(options.databasesPath).to.equal("construct_from_path_and_org");
             expect(options.retries).to.equal(5);
@@ -56,7 +56,7 @@ describe("asana_export_importer", function() {
             expect(options.module).to.equal("something");
             expect(options.organization).to.equal(1111);
             expect(options.pats[0]).to.equal("key");
-            expect(options.apiEndpoint).to.equal("http://example.com/");
+            expect(options.asanaBaseUrl).to.equal("http://example.com/");
             expect(options.attachmentsPath).to.equal("attachments1.json");
             expect(options.databasesPath).to.equal("db1");
             expect(options.retries).to.equal(2222);
@@ -88,8 +88,8 @@ describe("asana_export_importer", function() {
 
             expect(app.importer().export().path()).to.equal("path");
             expect(app.importer().organizationId()).to.equal(1111);
-            expect(app.apiClient().dispatcher.authValue.bearer).to.equal("key");
-            expect(aei.asana.Dispatcher.ROOT_URL).to.equal("http://example.com/");
+            expect(app.apiClient().dispatcher.authenticator.credentials.access_token).to.equal("key");
+            expect(app.apiClient().dispatcher.asanaBaseUrl).to.equal("http://example.com/");
             expect(app.attachmentsPath()).to.equal("db1/attachments1.json");
             expect(app.sourceToAsanaMap().dbPath()).to.equal("db1/mapping.sqlite");
 

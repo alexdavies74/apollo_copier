@@ -4,7 +4,7 @@
   "author": "Rich Collins <richcollins@gmail.com>",
   "description": "Asana Importer",
   "dependencies": {
-    "asana": "0.3.0",
+    "asana": "0.16.6",
     "bluebird": "^2.3.11",
     "dateformat": "1.0.8",
     "docopt": "^0.4.1",

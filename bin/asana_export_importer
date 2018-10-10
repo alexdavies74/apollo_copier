@@ -17,7 +17,7 @@ exports.doc =
 "  --importer=<type>     Export source type [default: asana_export].\n" + 
 "  --organization=<id>   Asana organization ID.\n" +
 "  --pat=<pat>...       Asana Personal Access Tokens\n" +
-"  --api-endpoint=<url>  Asana API endpoint [default: " + aei.asana.Dispatcher.ROOT_URL + "]\n" +
+"  --api-endpoint=<url>  Asana API endpoint [default: " + (new aei.asana.Dispatcher()).asanaBaseUrl + "]\n" +
 "  --attachments=<file>  Attachments file to write to, relative to the databases directory [default: attachments.json]\n" +
 "  --databases=<dir>     Base directory for temporary databases [default: construct_from_path_and_org]\n" +
 "  --resumable=<bool>    Enable resuming [default: true]\n" +
@@ -39,7 +39,7 @@ exports.parseOptions = function() {
 		module: opts["--importer"],
 		organization: parseInt(opts["--organization"], 10),
     pats: opts["--pat"],
-		apiEndpoint: opts["--api-endpoint"],
+		asanaBaseUrl: opts["--api-endpoint"],
 		attachmentsPath: opts["--attachments"],
 		databasesPath: opts["--databases"],
 		retries: parseInt(opts["--retries"], 10),
@@ -64,11 +64,6 @@ exports.initApp = function(options) {
 	if (ExportImplementation == undefined) {
 		console.log("Missing 'ExportImplementation' in module '" + options.module + "'");
 		process.exit(1);
-	}
-
-	if (options.apiEndpoint !== aei.asana.Dispatcher.ROOT_URL) {
-		console.log("Setting API endpoint to " + options.apiEndpoint);
-		aei.asana.Dispatcher.ROOT_URL = options.apiEndpoint;
 	}
 
 	var app = aei.App.shared();
@@ -107,7 +102,10 @@ exports.initApp = function(options) {
 	} else {
 		options.pats.forEach(function(pat) {
 			// aei.asana.oauth is broken for this version of the API so manually create
-			var apiClient = new aei.asana.Client(new aei.asana.Dispatcher('auth', {bearer: pat}));
+			var apiClient = aei.asana.Client.create({
+            defaultHeaders: {'Asana-Disable': 'new_rich_text'},
+			asanaBaseUrl: options.asanaBaseUrl
+		}).useAccessToken(options.apiKey);
 
 			var user;
 			if (pat === "key") {
