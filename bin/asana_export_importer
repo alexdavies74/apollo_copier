@@ -38,7 +38,7 @@ exports.parseOptions = function() {
 		path: opts["<path>"],
 		module: opts["--importer"],
 		organization: parseInt(opts["--organization"], 10),
-    pats: opts["--pat"],
+    	pats: opts["--pat"],
 		asanaBaseUrl: opts["--api-endpoint"],
 		attachmentsPath: opts["--attachments"],
 		databasesPath: opts["--databases"],
@@ -103,9 +103,9 @@ exports.initApp = function(options) {
 		options.pats.forEach(function(pat) {
 			// aei.asana.oauth is broken for this version of the API so manually create
 			var apiClient = aei.asana.Client.create({
-            defaultHeaders: {'Asana-Disable': 'new_rich_text'},
-			asanaBaseUrl: options.asanaBaseUrl
-		}).useAccessToken(options.apiKey);
+				defaultHeaders: {'Asana-Disable': 'new_rich_text'},
+				asanaBaseUrl: options.asanaBaseUrl
+			}).useAccessToken(pat);
 
 			var user;
 			if (pat === "key") {
