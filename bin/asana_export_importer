@@ -107,6 +107,24 @@ exports.initApp = function(options) {
 				asanaBaseUrl: options.asanaBaseUrl
 			}).useAccessToken(pat);
 
+
+            if (options.retries > 0) {
+                var clientRetry = aei.AsanaClientRetry.clone();
+                clientRetry.setClient(apiClient);
+                clientRetry.setRetries(options.retries);
+                clientRetry.setBackoff(options.retryBackoff);
+                clientRetry.setDelay(options.retryDelay);
+                apiClient = clientRetry;
+            }
+
+            if (options.resumable) {
+                var clientCache = aei.AsanaClientCache.clone();
+                clientCache.setClient(apiClient);
+                clientCache.setDbPath(databasesPath + "/cache" + pat.substr(pat.length - 5) + ".sqlite");
+                clientCache.setReadOnly(options.dryRun);
+                apiClient = clientCache;
+            }
+
 			var user;
 			if (pat === "key") {
 				// Magic value used in tests
@@ -118,25 +136,10 @@ exports.initApp = function(options) {
 					user = aei.Future.withPromise(apiClient.users.me()).wait();
 					console.log("Got PAT for " + user.id + ": " + user.name + "  " + pat);
 				} catch (e) {
+					console.log("client", apiClient)
+					console.log("me", apiClient.users.me)
 					console.log("Could not get user for PAT " + pat, e);
 				}
-			}
-
-			if (options.retries > 0) {
-				var clientRetry = aei.AsanaClientRetry.clone();
-				clientRetry.setClient(apiClient);
-				clientRetry.setRetries(options.retries);
-				clientRetry.setBackoff(options.retryBackoff);
-				clientRetry.setDelay(options.retryDelay);
-				apiClient = clientRetry;
-			}
-
-			if (options.resumable) {
-				var clientCache = aei.AsanaClientCache.clone();
-				clientCache.setClient(apiClient);
-				clientCache.setDbPath(databasesPath + "/cache" + user.id + ".sqlite");
-				clientCache.setReadOnly(options.dryRun);
-				apiClient = clientCache;
 			}
 
 			app.addClient(user.id, apiClient);
