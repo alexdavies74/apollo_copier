@@ -153,14 +153,19 @@ exports.initApp = function(options) {
 
 exports.main = function() {
 	aei.Future.task(function() {
-		var options = exports.parseOptions();
-		var app = exports.initApp(options);
-		app.start().resolve(function (err) {
-			if (err) {
-				console.log(err.stack || err);
-				process.exit(1);
-			}
-		});
+        try {
+			var options = exports.parseOptions();
+			var app = exports.initApp(options);
+			app.start().resolve(function (err) {
+				if (err) {
+					console.log(err.stack || err);
+					process.exit(1);
+				}
+			});
+        } catch (err) {
+            console.log(err.stack || err);
+            process.exit(1);
+        }
 	});
 }
 
