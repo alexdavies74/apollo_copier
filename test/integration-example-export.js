@@ -35,6 +35,7 @@ describe("Importer", function() {
             client.projects.create = sinon.spy(createMock);
             client.stories.createOnTask = sinon.spy(createMock);
             client.tags.createInWorkspace = sinon.spy(createMock);
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
             client.tasks.addProject = sinon.spy(emptyMock);
             client.tasks.addTag = sinon.spy(emptyMock);
             client.tasks.create = sinon.spy(createMock);
@@ -42,7 +43,6 @@ describe("Importer", function() {
             client.tasks.setParent = sinon.spy(emptyMock);
             client.teams.create = sinon.spy(createMock);
             client.workspaces.addUser = sinon.spy(emptyMock);
-            client.workspaces.tags = sinon.stub().returns(Promise.resolve([]));
 
             // Disable the file system because we don't have a
             sandbox.stub(require("fs"), "appendFile", function (path, text, callback) { callback(null); });
@@ -58,6 +58,7 @@ describe("Importer", function() {
             expect(client.projects.create).to.have.callCount(5);
             expect(client.stories.createOnTask).to.have.callCount(81);
             expect(client.tags.createInWorkspace).to.have.callCount(3);
+            expect(client.tags.findByWorkspace).to.have.callCount(1);
             expect(client.tasks.addProject).to.have.callCount(20);
             expect(client.tasks.addTag).to.have.callCount(5);
             expect(client.tasks.create).to.have.callCount(26);
@@ -65,7 +66,6 @@ describe("Importer", function() {
             expect(client.tasks.setParent).to.have.callCount(6);
             expect(client.teams.create).to.have.callCount(3);
             expect(client.workspaces.addUser).to.have.callCount(3);
-            expect(client.workspaces.tags).to.have.callCount(1);
         });
     });
 });

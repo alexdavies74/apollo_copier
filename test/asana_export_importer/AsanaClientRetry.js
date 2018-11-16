@@ -7,7 +7,7 @@ describe("AsanaClientRetry", function() {
             if (remainingFailures-- > 0) {
                 return Promise.reject("some reason");
             } else {
-                return Promise.resolve({});
+                return Promise.resolve({data:{}});
             }
         }}};
 
