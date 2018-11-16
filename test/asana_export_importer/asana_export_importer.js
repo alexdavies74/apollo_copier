@@ -119,7 +119,7 @@ describe("asana_export_importer", function() {
             var clientRetry = clientCache.client();
 
             expect(clientCache).to.not.equal(null);
-            expect(clientCache.dbPath()).to.equal("db1/cache1234.sqlite");
+            expect(clientCache.dbPath()).to.equal("db1/cacheey.sqlite");
 
             expect(clientRetry).to.not.equal(null);
             expect(clientRetry.retries()).to.equal(2222);
