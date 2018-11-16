@@ -31,7 +31,7 @@ describe("Integration", function() {
 
     describe("#run()", function() {
         it("should run with no data", function() {
-            client.workspaces.tags = sinon.stub().returns(Promise.resolve([]));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
 
             importer.run();
 
@@ -379,7 +379,7 @@ describe("Integration", function() {
         it("should create a tag with and without a team", function() {
             client.teams.create = sinon.spy(createMock);
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.workspaces.tags = sinon.stub().returns(Promise.resolve([]));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
 
             exp.addObject(100, "Team", { name: "team1", is_project: false, assignee: null, team_type: null });
             exp.addObject(200, "ItemList", { name: "tag1", is_project: false, assignee: null, team: null, items: [], followers_du: [] });
@@ -396,16 +396,16 @@ describe("Integration", function() {
 
             expect(client.teams.create).to.have.callCount(1);
             expect(client.tags.createInWorkspace).to.have.callCount(2);
-            expect(client.workspaces.tags).to.have.callCount(1);
+            expect(client.tags.findByWorkspace).to.have.callCount(1);
             expect(client.tags.createInWorkspace).to.have.been.calledWithExactly(orgId, { _sourceId: 200, name: "tag1", team: null });
             expect(client.tags.createInWorkspace).to.have.been.calledWithExactly(orgId, { _sourceId: 201, name: "tag2", team: app.sourceToAsanaMap().at(100) });
         });
 
         it("should not create duplicate tags", function() {
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.workspaces.tags = sinon.stub().returns(Promise.resolve([
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data: [
                 { name: "tag1", id: 1 }
-            ]));
+            ]}));
 
             exp.addObject(100, "ItemList", { name: "tag1", is_project: false, assignee: null, team: null, items: [], followers_du: [] });
             exp.prepareForImport();
@@ -417,7 +417,7 @@ describe("Integration", function() {
             importer._importTags();
 
             expect(client.tags.createInWorkspace).to.have.callCount(0);
-            expect(client.workspaces.tags).to.have.callCount(1);
+            expect(client.tags.findByWorkspace).to.have.callCount(1);
             expect(app.sourceToAsanaMap().at(100)).to.equal(1);
         });
     });
@@ -440,8 +440,8 @@ describe("Integration", function() {
             importer._importTasks();
 
             expect(client.tasks.create).to.have.callCount(2);
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, force_public: false, hearted: false, recurrence: { type: null, data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "desc", completed: true, start_on: "2023-11-15 00:00:00", due_on: "2023-11-30 00:00:00", force_public: false, hearted: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, force_public: false, hearted: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "<body>desc</body>", completed: true, start_on: "2023-11-15 00:00:00", due_on: "2023-11-30 00:00:00", force_public: false, hearted: false, recurrence: { type: null, data: null } });
         });
 
         it("should not create trashed tasks", function() {
@@ -470,9 +470,9 @@ describe("Integration", function() {
             importer._importTasks();
 
             expect(client.tasks.create).to.have.callCount(3);
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: true, recurrence: { type: null, data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 102, workspace: orgId, name: "task3", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, hearted: false, force_public: true, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 102, workspace: orgId, name: "task3", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: null, data: null } });
         });
 
         it("should create tasks with the correct recurrence fields", function() {
@@ -490,9 +490,9 @@ describe("Integration", function() {
             importer._importTasks();
 
             expect(client.tasks.create).to.have.callCount(3);
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "PERIODICALLY", data: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}" } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 102, workspace: orgId, name: "task3", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "WEEKLY", data: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}" } });
-            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "NEVER", data: null } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 101, workspace: orgId, name: "task2", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "PERIODICALLY", data: "{\"days_after_completion\":4,\"original_due_date\":1418342400000}" } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 102, workspace: orgId, name: "task3", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "WEEKLY", data: "{\"days_of_week\":[3,5],\"original_due_date\":1418342400000}" } });
+            expect(client.tasks.create).to.have.been.calledWithExactly({ _sourceId: 100, workspace: orgId, name: "task1", html_notes: "<body></body>", completed: false, start_on: null, due_on: null, hearted: false, force_public: false, recurrence: { type: "NEVER", data: null } });
         });
     });
 
@@ -757,7 +757,7 @@ describe("Integration", function() {
     describe("#_addTasksToTags", function() {
         it("should add tasks to tags in the correct order", function() {
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.workspaces.tags = sinon.stub().returns(Promise.resolve([]));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
             client.tasks.create = sinon.spy(createMock);
             client.tasks.addTag = sinon.spy(emptyMock);
 
@@ -775,7 +775,7 @@ describe("Integration", function() {
             importer._addTasksToTags();
 
             expect(client.tags.createInWorkspace).to.have.callCount(1);
-            expect(client.workspaces.tags).to.have.callCount(1);
+            expect(client.tags.findByWorkspace).to.have.callCount(1);
             expect(client.tasks.create).to.have.callCount(2);
             expect(client.tasks.addTag).to.have.callCount(2);
             // reversed to get correct order
