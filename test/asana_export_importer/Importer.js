@@ -194,7 +194,7 @@ describe("Importer", function() {
             exp.setMockData({
                 tags: [{ sourceId: 1, name: "tag foo", sourceTeamId: null }]
             });
-            sinon.stub(client.tags, "findByWorkspace", function() { return Promise.resolve({data:[ { name: "tag foo", id: 1 } ]}); });
+            sinon.stub(client.tags, "findByWorkspace", function() { return Promise.resolve({fetch: function() { return Promise.resolve([ { name: "tag foo", id: 1 } ])}}); });
 
             importer._importTags();
 

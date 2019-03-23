@@ -27,7 +27,7 @@ describe("Integration", function() {
 
     describe("#run()", function() {
         it("should run with no data", function() {
-            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({fetch: function() { return Promise.resolve([])}}));
 
             importer.run();
 
@@ -375,7 +375,7 @@ describe("Integration", function() {
         it("should create a tag with and without a team", function() {
             client.teams.create = sinon.spy(createMock);
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({fetch: function() { return Promise.resolve([])}}));
 
             exp.addObject(100, "Team", { name: "team1", is_project: false, assignee: null, team_type: null });
             exp.addObject(200, "ItemList", { name: "tag1", is_project: false, assignee: null, team: null, items: [], followers_du: [] });
@@ -399,9 +399,7 @@ describe("Integration", function() {
 
         it("should not create duplicate tags", function() {
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data: [
-                { name: "tag1", id: 1 }
-            ]}));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({fetch: function() { return Promise.resolve([{ name: "tag1", id: 1 }])}}));
 
             exp.addObject(100, "ItemList", { name: "tag1", is_project: false, assignee: null, team: null, items: [], followers_du: [] });
             exp.prepareForImport();
@@ -755,7 +753,7 @@ describe("Integration", function() {
     describe("#_addTasksToTags", function() {
         it("should add tasks to tags in the correct order", function() {
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({fetch: function() { return Promise.resolve([])}}));
             client.tasks.create = sinon.spy(createMock);
             client.tasks.addTag = sinon.spy(emptyMock);
 

@@ -35,7 +35,7 @@ describe("Importer", function() {
             client.projects.create = sinon.spy(createMock);
             client.stories.createOnTask = sinon.spy(createMock);
             client.tags.createInWorkspace = sinon.spy(createMock);
-            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({data:[]}));
+            client.tags.findByWorkspace = sinon.stub().returns(Promise.resolve({fetch: function() { return Promise.resolve([])}}));
             client.tasks.addProject = sinon.spy(emptyMock);
             client.tasks.addTag = sinon.spy(emptyMock);
             client.tasks.create = sinon.spy(createMock);
