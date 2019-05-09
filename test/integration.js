@@ -111,7 +111,9 @@ describe("Integration", function() {
                     id: asanaIdCounter++,
                     enum_options: [
                         { id: 201 },
-                        { id: 202 }
+                        { id: 202 },
+                        { id: 203 },
+                        { id: 204 }
                     ]
                 });
             });
@@ -119,12 +121,16 @@ describe("Integration", function() {
             exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web" });
             exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(105, "CustomPropertyEnumOption", { name: "", proto: 102, is_archived: false, color: "purple", rank: "D" });
+            exp.addObject(106, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: true, color: "blue", rank: "E" });
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", creationSource: "web", options: [
                     { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
-                    { sourceId: 103, name: "Red Pill", enabled: true, color: "red" }
+                    { sourceId: 103, name: "Red Pill", enabled: true, color: "red" },
+                    { sourceId: 105, name: "", enabled: true, color: "purple" },
+                    { sourceId: 106, name: "Blue Pill", enabled: false, color: "blue" }
                 ] }
             ]);
 
@@ -141,7 +147,9 @@ describe("Integration", function() {
                         workspace: orgId,
                         enum_options: [
                             { color: "blue", enabled: true, name: "Blue Pill", sourceId: 104 },
-                            { color: "red", enabled: true, name: "Red Pill", sourceId: 103 }
+                            { color: "red", enabled: true, name: "Red Pill", sourceId: 103 },
+                            { color: "purple", enabled: true, name: "Empty name option", sourceId: 105 },
+                            { color: "blue", enabled: false, name: "Blue Pill 2", sourceId: 106 }
                         ]});
 
             // Check that we parsed the IDs of the newly created enum options correctly, and stored them for setting values later
