@@ -69,18 +69,21 @@ describe("Integration", function() {
 
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
             exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3, creation_source: "web" });
+            exp.addObject(102, "CustomPropertyNumberProto", { name: "Not Published", description: "A number field", precision: 3, creation_source: "web", is_published_to_domain: false });
+            exp.addObject(103, "CustomPropertyNumberProto", { name: "Published", description: "A number field", precision: 3, creation_source: "web", is_published_to_domain: true });
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 100, name: "Teddy", description: "A text field", type: "text", creationSource: "web" },
-                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3, creationSource: "web" }
+                { sourceId: 100, name: "Teddy", description: "A text field", type: "text", creationSource: "web", "isPublishedToDomain": null },
+                { sourceId: 101, name: "Noddy", description: "A number field", type: "number", precision: 3, creationSource: "web", "isPublishedToDomain": null },
+                { sourceId: 102, name: "Not Published", description: "A number field", type: "number", precision: 3, creationSource: "web", "isPublishedToDomain": false },
+                { sourceId: 103, name: "Published", description: "A number field", type: "number", precision: 3, creationSource: "web", "isPublishedToDomain": true }
             ]);
 
             importer._importCustomFieldProtos();
 
-            // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
-            // used directly
-            expect(client.customFields.create).to.have.callCount(2);
+            // Custom fields with isPublishedToDomain set to false are skipped because the API does not support creating these yet.
+            expect(client.customFields.create).to.have.callCount(3);
             expect(client.customFields.create).to.have.been.calledWithExactly({
                 _sourceId: 100,
                 name: "Teddy",
@@ -91,6 +94,14 @@ describe("Integration", function() {
             expect(client.customFields.create).to.have.been.calledWithExactly({
                 _sourceId: 101,
                 name: "Noddy",
+                description: "A number field",
+                type: "number",
+                precision: 3,
+                workspace: orgId
+            });
+            expect(client.customFields.create).to.have.been.calledWithExactly({
+                _sourceId: 103,
+                name: "Published",
                 description: "A number field",
                 type: "number",
                 precision: 3,
@@ -114,7 +125,7 @@ describe("Integration", function() {
                 });
             });
 
-            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web" });
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web", is_published_to_domain: true });
             exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
             exp.addObject(105, "CustomPropertyEnumOption", { name: "", proto: 102, is_archived: false, color: "purple", rank: "D" });
@@ -122,7 +133,7 @@ describe("Integration", function() {
             exp.prepareForImport();
 
             expect(exp.customFieldProtos().mapPerform("toJS")).to.deep.equal([
-                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", creationSource: "web", options: [
+                { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", creationSource: "web", isPublishedToDomain: true, options: [
                     { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
                     { sourceId: 103, name: "Red Pill", enabled: true, color: "red" },
                     { sourceId: 105, name: "", enabled: true, color: "purple" },
