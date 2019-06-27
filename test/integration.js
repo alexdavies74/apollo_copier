@@ -5,6 +5,17 @@ describe("Integration", function() {
 
     function createMock() { return Promise.resolve({ id: asanaIdCounter++ }); }
     function emptyMock() { return Promise.resolve({}); }
+    
+    // Convert a project ImportObject and the custom field ImportObjects referenced inside it to js.
+    function projectToJsDeep(project) {
+        var projectObj = project.toJS();
+        projectObj.customFieldSettings = projectObj.customFieldSettings.map(function(customFieldSetting) {
+            var customFieldSettingCopy = Object.shallowCopy(customFieldSetting);
+            customFieldSettingCopy.sourceCustomFieldProto = Object.perform(customFieldSetting.sourceCustomFieldProto, "toJS");
+            return customFieldSettingCopy;
+        });
+        return projectObj;
+    }
 
     beforeEach(function() {
         sandbox = sinon.sandbox.create();
@@ -63,7 +74,7 @@ describe("Integration", function() {
         });
     });
 
-    describe("#_importCustomFieldProtos", function() {
+    describe("#_importPublishedCustomFieldProtos", function() {
         it("should create text and number field protos", function() {
             client.customFields.create = sinon.spy(createMock);
 
@@ -80,7 +91,7 @@ describe("Integration", function() {
                 { sourceId: 103, name: "Published", description: "A number field", type: "number", precision: 3, creationSource: "web", "isPublishedToDomain": true }
             ]);
 
-            importer._importCustomFieldProtos();
+            importer._importPublishedCustomFieldProtos();
 
             // Custom fields with isPublishedToDomain set to false are skipped because the API does not support creating these yet.
             expect(client.customFields.create).to.have.callCount(3);
@@ -141,7 +152,7 @@ describe("Integration", function() {
                 ] }
             ]);
 
-            importer._importCustomFieldProtos();
+            importer._importPublishedCustomFieldProtos();
 
             // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
             // used directly
@@ -179,7 +190,7 @@ describe("Integration", function() {
             exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", creation_source: "web" });
             exp.prepareForImport();
 
-            importer._importCustomFieldProtos();
+            importer._importPublishedCustomFieldProtos();
 
             // The client library doesn't support custom fields yet, so we expect the dispatcher to have been
             // used directly
@@ -229,7 +240,7 @@ describe("Integration", function() {
             exp.addObject(200, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 100, items: [], followers_du: [], assignee: null });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] }
             ]);
 
@@ -248,7 +259,7 @@ describe("Integration", function() {
             exp.addObject(202, "ItemList", { name: "project3", description: "desc", is_project: true, is_archived: false, team: 100, items: [], followers_du: [] });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 200, name: "project1", notes: "desc", archived: false, public: true, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] },
                 { sourceId: 201, name: "project2", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] },
                 { sourceId: 202, name: "project3", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 100, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [] }
@@ -269,7 +280,7 @@ describe("Integration", function() {
             exp.addObject(401, "ItemList", { name: "My Tasks", description: "desc", is_project: true,  assignee: 200, team: null, is_archived: false, items: [], followers_du: [] });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([]);
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([]);
             expect(exp.tags().mapPerform("toJS")).to.deep.equal([
                 { sourceId: 400, name: "tag1", sourceItemIds: [], sourceTeamId: null }
             ]);
@@ -281,34 +292,119 @@ describe("Integration", function() {
     });
 
     describe("#_addCustomFieldSettingsToProjects()", function() {
-        it("should add custom field settings to projects", function() {
+        it("should add unpublished custom field settings to projects", function() {
+            client.projects.create = sinon.spy(createMock);
+            client.teams.create = sinon.spy(createMock);
+            client.customFields.create = sinon.spy(createMock);
+            client.projects.addCustomFieldSetting = sinon.spy(function() {
+                return Promise.resolve({
+                    id: asanaIdCounter++,
+                    custom_field: {
+                        id: 1200
+                    }
+                })
+            });
+            client.customFields.findById = sinon.spy(function() {
+                return Promise.resolve({
+                    id: 1200,
+                    enum_options: [
+                        { id: 1201 },
+                        { id: 1202 },
+                        { id: 1203 },
+                        { id: 1204 }
+                    ]
+                });
+            });
+
+            exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
+            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
+            exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web", is_published_to_domain: false });
+            exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
+            exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
+            exp.addObject(105, "CustomPropertyEnumOption", { name: "", proto: 102, is_archived: false, color: "purple", rank: "D" });
+            exp.addObject(106, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: true, color: "blue", rank: "E" });
+            exp.addObject(107, "CustomPropertyProjectSetting", { project: 101, proto: 102, is_important: true, rank: "B" });
+            exp.prepareForImport();
+
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
+                { sourceId: 101, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
+                    {
+                        isImportant: true,
+                        sourceId: 107,
+                        sourceCustomFieldProto:  { sourceId: 102, name: "Eddy", description: "A enum field", type: "enum", creationSource: "web", isPublishedToDomain: false, options: [
+                            { sourceId: 104, name: "Blue Pill", enabled: true, color: "blue" },
+                            { sourceId: 103, name: "Red Pill", enabled: true, color: "red" },
+                            { sourceId: 105, name: "", enabled: true, color: "purple" },
+                            { sourceId: 106, name: "Blue Pill", enabled: false, color: "blue" }
+                        ] }
+                    }
+                ] }
+            ]);
+
+            importer._importTeams();
+            importer._importPublishedCustomFieldProtos();
+            importer._importProjects();
+            importer._addCustomFieldSettingsToProjects();
+
+            expect(client.projects.addCustomFieldSetting).to.have.callCount(1);
+            expect(client.projects.addCustomFieldSetting.getCall(0).args).to.deep.equal([app.sourceToAsanaMap().at(101), {
+                custom_field: {
+                    name: "Eddy",
+                    description: "A enum field",
+                    type: "enum",
+                    workspace: null, // xcxc
+                    enum_options: [
+                        { color: "blue", enabled: true, name: "Blue Pill", sourceId: 104 },
+                        { color: "red", enabled: true, name: "Red Pill", sourceId: 103 },
+                        { color: "purple", enabled: true, name: "Empty name option", sourceId: 105 },
+                        { color: "blue", enabled: false, name: "Blue Pill 2", sourceId: 106 }
+                    ]
+                },
+                is_important: true,
+                _sourceId: 107
+            }]);
+            
+            expect(app.sourceToAsanaMap().at(102)).to.equal(1200);
+            expect(app.sourceToAsanaMap().at(104)).to.equal(1201);
+            expect(app.sourceToAsanaMap().at(103)).to.equal(1202);
+            expect(app.sourceToAsanaMap().at(105)).to.equal(1203);
+            expect(app.sourceToAsanaMap().at(106)).to.equal(1204);
+        });
+
+        it("should add published custom field settings to projects", function() {
             client.projects.create = sinon.spy(createMock);
             client.projects.addCustomFieldSetting = sinon.spy(createMock);
             client.teams.create = sinon.spy(createMock);
             client.customFields.create = sinon.spy(createMock);
 
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
-            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", is_published_to_domain: true });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", precision: 3 });
             exp.addObject(102, "Team", { name: "team1", team_type: "PUBLIC" });
             exp.addObject(103, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
             exp.addObject(104, "CustomPropertyProjectSetting", { project: 103, proto: 100, is_important: true, rank: "B" });
             exp.addObject(105, "CustomPropertyProjectSetting", { project: 103, proto: 101, is_important: true, rank: "A" });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
-                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
+                    { 
+                        isImportant: true,
+                        sourceId: 105,
+                        sourceCustomFieldProto: { sourceId: 101, creationSource: undefined, isPublishedToDomain: null, name: "Noddy", description: undefined, precision: 3, type: "number" },
+                    },
+                    {
+                        isImportant: true,
+                        sourceId: 104,
+                        sourceCustomFieldProto: { sourceId: 100, creationSource: undefined, isPublishedToDomain: true, name: "Teddy", description: undefined, type: "text" },
+                    }
                 ] }
             ]);
 
             importer._importTeams();
-            importer._importCustomFieldProtos();
+            importer._importPublishedCustomFieldProtos();
             importer._importProjects();
             importer._addCustomFieldSettingsToProjects();
 
-            // The client library doesn't support custom field settings yet, so we expect the dispatcher to have been
-            // used directly
             expect(client.projects.addCustomFieldSetting).to.have.callCount(2);
             expect(client.projects.addCustomFieldSetting).to.have.been.calledWithExactly(app.sourceToAsanaMap().at(103), {
                 custom_field: app.sourceToAsanaMap().at(101),
@@ -328,24 +424,28 @@ describe("Integration", function() {
             client.teams.create = sinon.spy(createMock);
             client.customFields.create = sinon.spy(createMock);
 
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field", __trashed_at: "2023-11-30 00:00:00"});
-            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", __trashed_at: "2023-11-30 00:00:00"});
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", precision: 3 });
             exp.addObject(102, "Team", { name: "team1", team_type: "PUBLIC" });
             exp.addObject(103, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
             exp.addObject(104, "CustomPropertyProjectSetting", { project: 103, proto: 100, is_important: true, rank: "B" });
             exp.addObject(105, "CustomPropertyProjectSetting", { project: 103, proto: 101, is_important: true, rank: "A" });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 103, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 101, sourceItemIds: [], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 105 },
-                    // We expect the setting to still exist here, it's filtered at a later stage (for perf)
-                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 104 }
+                    { 
+                        isImportant: true,
+                        sourceId: 105,
+                        sourceCustomFieldProto: { sourceId: 101, creationSource: undefined, isPublishedToDomain: null, name: "Noddy", description: undefined, precision: 3, type: "number" },
+                    },
+                    // If we can't find the custom property for the id we leave it null
+                    { sourceCustomFieldProto: null, isImportant: true, sourceId: 104 }
                 ] }
             ]);
 
             importer._importTeams();
-            importer._importCustomFieldProtos();
+            importer._importPublishedCustomFieldProtos();
             importer._importProjects();
             importer._addCustomFieldSettingsToProjects();
 
@@ -649,7 +749,7 @@ describe("Integration", function() {
             exp.addObject(301, "Task", { name: "task2", description: null, items: [], attachments: [], followers_du: [], stories: [] });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 200, name: "project1", notes: "desc", sourceTeamId: 100, sourceMemberIds: [], sourceItemIds: [301, 300], sourceFollowerIds: [], archived: false, color: null, isBoard: false, public: false, customFieldSettings: [] }
             ]);
 
@@ -672,11 +772,28 @@ describe("Integration", function() {
         it("should add custom field values to tasks", function() {
             client.teams.create = sinon.spy(createMock);
             client.projects.create = sinon.spy(createMock);
-            client.projects.addCustomFieldSetting = sinon.spy(createMock);
             client.tasks.create = sinon.spy(createMock);
             client.tasks.addProject = sinon.spy(emptyMock);
             client.tasks.update = sinon.spy(emptyMock);
 
+            client.projects.addCustomFieldSetting = sinon.spy(function() {
+                return Promise.resolve({
+                    id: asanaIdCounter++,
+                    custom_field: {
+                        id: 1200
+                    }
+                })
+            });
+            client.customFields.findById = sinon.spy(function() {
+                return Promise.resolve({
+                    id: 1200,
+                    enum_options: [
+                        { id: 1201 },
+                        { id: 1202 },
+                        { id: 1203 }
+                    ]
+                });
+            });
             client.customFields.create = sinon.spy(function() {
                 return Promise.resolve({
                     id: asanaIdCounter++,
@@ -689,8 +806,8 @@ describe("Integration", function() {
             });
 
             // This requires an annoying amount of preparation, because tasks outside projects can't get custom field values
-            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", description: "A text field" });
-            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", description: "A number field", precision: 3 });
+            exp.addObject(100, "CustomPropertyTextProto", { name: "Teddy", is_published_to_domain: false });
+            exp.addObject(101, "CustomPropertyNumberProto", { name: "Noddy", precision: 3, is_published_to_domain: true });
             exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field" });
             exp.addObject(110, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(111, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
@@ -739,15 +856,23 @@ describe("Integration", function() {
                     ]  }
             ]);
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 200, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 150, sourceItemIds: [301, 300], sourceMemberIds: [], sourceFollowerIds: [], customFieldSettings: [
-                    { sourceCustomFieldProtoId: 101, isImportant: true, sourceId: 131 },
-                    { sourceCustomFieldProtoId: 100, isImportant: true, sourceId: 130 }
+                    { 
+                        isImportant: true,
+                        sourceId: 131,
+                        sourceCustomFieldProto: { sourceId: 101, creationSource: undefined, isPublishedToDomain: true, name: "Noddy", description: undefined, precision: 3, type: "number" },
+                    },
+                    {
+                        isImportant: true,
+                        sourceId: 130,
+                        sourceCustomFieldProto: { sourceId: 100, creationSource: undefined, isPublishedToDomain: false, name: "Teddy", description: undefined, type: "text" },
+                    }
                 ] }
             ]);
 
             importer._importTeams();
-            importer._importCustomFieldProtos();
+            importer._importPublishedCustomFieldProtos();
             importer._importProjects();
             importer._addCustomFieldSettingsToProjects();
             importer._importTasks();
@@ -1084,7 +1209,7 @@ describe("Integration", function() {
             exp.addObject(501, "ProjectMembership", { project: 400, member: 201 });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [], sourceMemberIds: [100, 101], customFieldSettings: [] }
             ]);
 
@@ -1121,7 +1246,7 @@ describe("Integration", function() {
             exp.addObject(501, "ProjectMembership", { project: 400, member: 201 });
             exp.prepareForImport();
 
-            expect(exp.projects().mapPerform("toJS")).to.deep.equal([
+            expect(exp.projects().map(projectToJsDeep)).to.deep.equal([
                 { sourceId: 400, name: "project1", notes: "desc", archived: false, public: false, color: null, isBoard: false, sourceTeamId: 300, sourceItemIds: [], sourceFollowerIds: [100, 101], sourceMemberIds: [100, 101], customFieldSettings: [] }
             ]);
 
