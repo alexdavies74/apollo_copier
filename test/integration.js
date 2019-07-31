@@ -321,7 +321,7 @@ describe("Integration", function() {
             });
 
             exp.addObject(100, "Team", { name: "team1", team_type: "PUBLIC" });
-            exp.addObject(101, "ItemList", { name: "project1", description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
+            exp.addObject(101, "ItemList", { name: "project1", creator_du: 1235, description: "desc", is_project: true, is_archived: false, team: 101, items: [], followers_du: [], assignee: null });
             exp.addObject(102, "CustomPropertyEnumProto", { name: "Eddy", description: "A enum field", creation_source: "web", is_published_to_domain: false });
             exp.addObject(103, "CustomPropertyEnumOption", { name: "Red Pill", proto: 102, is_archived: false, color: "red", rank: "C" });
             exp.addObject(104, "CustomPropertyEnumOption", { name: "Blue Pill", proto: 102, is_archived: false, color: "blue", rank: "B" });
