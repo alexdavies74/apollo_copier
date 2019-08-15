@@ -112,7 +112,7 @@ describe("AsanaExport", function() {
         });
 
         it("should return a list project if there are no columns and layout is list", function() {
-            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4, layout: "list" });
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4, default_view_json: "{'view_mode': 'list'}" });
             exp.prepareForImport();
 
             exp.projects().mapPerform("performGets", ["isBoard"]).should.deep.equal([
@@ -121,7 +121,7 @@ describe("AsanaExport", function() {
         });
 
         it("should return a list project if there are columns but layout is list", function() {
-            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4, layout: "list" });
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4, default_view_json: "{'view_mode': 'list'}" });
             exp.addObject(2, "Column", { name: "First column", pot: 1, rank: "V" });
             exp.prepareForImport();
 
@@ -131,7 +131,7 @@ describe("AsanaExport", function() {
         });
 
         it("should return a board project if there are columns and layout is column", function() {
-            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4, layout: "board"});
+            exp.addObject(1, "ItemList", { followers_du: [], is_project: true, team: 4, default_view_json: "{'view_mode': 'board'}"});
             exp.addObject(2, "Column", { name: "First column", pot: 1, rank: "V" });
             exp.prepareForImport();
 
