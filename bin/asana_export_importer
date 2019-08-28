@@ -103,7 +103,10 @@ exports.initApp = function(options) {
 		options.pats.forEach(function(pat) {
 			// aei.asana.oauth is broken for this version of the API so manually create
 			var apiClient = aei.asana.Client.create({
-                defaultHeaders: {'Asana-Enable': 'new_sections'},
+                defaultHeaders: {
+					'Asana-Enable': 'new_sections',
+					'Asana-Disable': 'string_ids'
+				},
 				asanaBaseUrl: options.asanaBaseUrl
 			}).useAccessToken(pat);
 
