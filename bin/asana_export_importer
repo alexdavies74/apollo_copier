@@ -101,7 +101,10 @@ exports.initApp = function(options) {
 		apiClient.setLatencyStdev(options.latencyStdev);
 	} else {
 		apiClient = aei.asana.Client.create({
-            defaultHeaders: {'Asana-Enable': 'new_sections'},
+            defaultHeaders: {
+            	'Asana-Enable': 'new_sections',
+				'Asana-Disable': 'string_ids'
+			},
 			asanaBaseUrl: options.asanaBaseUrl
 		}).useAccessToken(options.apiKey);
 	}
